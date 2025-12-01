@@ -42,7 +42,8 @@ int CreateWindow(const char *title, int WIDTH, int HEIGHT) {
         return 1;
     }
 
-    // Projection
+    SDL_SetWindowRelativeMouseMode(Window.window, true);
+
     glViewport(0, 0, WIDTH, HEIGHT);
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
@@ -73,6 +74,10 @@ int CreateWindow(const char *title, int WIDTH, int HEIGHT) {
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_EVENT_QUIT)
                 Window.Running = false;
+
+            if (event.type == SDL_EVENT_MOUSE_MOTION) {
+                ProcessMouseMovement(&cam, event.motion.xrel, event.motion.yrel);
+            }
         }
 
         int nowTicks = SDL_GetTicks();

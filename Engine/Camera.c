@@ -22,6 +22,17 @@ void ProcessInput(camera* cam, float deltaTime) {
     if (state[SDL_SCANCODE_E]) cam->pos.y += speed;
 }
 
+// 🖱️ NEW: mouse look
+void ProcessMouseMovement(camera* cam, float xrel, float yrel) {
+    const float sensitivity = 0.1f;
+
+    cam->yaw   += xrel * sensitivity;
+    cam->pitch -= yrel * sensitivity;
+
+    if (cam->pitch > 89.0f)  cam->pitch = 89.0f;
+    if (cam->pitch < -89.0f) cam->pitch = -89.0f;
+}
+
 void ApplyCameraView(camera* cam) {
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();

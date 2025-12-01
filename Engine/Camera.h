@@ -11,6 +11,7 @@ typedef struct {
 
 void InitCamera(camera* cam, vec3 pos);
 void ProcessInput(camera* cam, float deltaTime);
+void ProcessMouseMovement(camera* cam, float xrel, float yrel);
 void ApplyCameraView(camera* cam);
 
 #endif

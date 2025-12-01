@@ -2,6 +2,6 @@
 #include "Engine/Window.h"
 
 int main(int argc, char *argv[]) {
-    CreateWindow("Hi", 1920, 1200);
+    CreateWindow("Hi", 800, 800);
     return 0;
 }
