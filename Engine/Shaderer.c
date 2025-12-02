@@ -1,10 +1,12 @@
 #include "Shaderer.h"
 #include <GL/gl.h>
+#include <SDL3/SDL_error.h>
+#include <SDL3/SDL_pixels.h>
+#include <SDL3/SDL_surface.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <GL/glew.h>
-#include <sys/types.h>
+#include <SDL3_image/SDL_image.h>
 
 static char* ReadFile(const char* path) {
     FILE* f = fopen(path, "rb");
@@ -103,15 +105,41 @@ void Shader_SetFloat(shader* s, const char* name, float value) {
 }
 
 
-void LoadCubeMap(const char* faces[], int count) {
-    for (int i =0; i < count; i ++) {
-     printf("Loading texture: %s\n", faces[i]);
-     shader s;
+GLuint LoadCubeMap(const char* faces[], int count) {
+    GLuint textureID;
+    glGenTextures(1, &textureID);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
 
-     glGenTextures(1, &s.id);
-     glBindTexture(GL_TEXTURE_CUBE_MAP, s.id);
-     int width, height, channels;
-     for (uint i = 0; i < sizeof(*faces); i++) {
+    for (int i = 0; i < count; i++) {
+        SDL_Surface* surface = SDL_LoadBMP(faces[i]);
+        if (!surface) {
+            printf("Failed to load cubemap texture %s: %s\n", faces[i], SDL_GetError());
+            continue;
+        }
 
-     }
+        int bpp = SDL_BITSPERPIXEL(SDL_GetSurfaceProperties(surface)) / 8;
+        GLenum format = (bpp == 4) ? GL_RGBA : GL_RGB;
+
+        glTexImage2D(
+            GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
+            0,
+            format,
+            surface->w,
+            surface->h,
+            0,
+            format,
+            GL_UNSIGNED_BYTE,
+            surface->pixels
+        );
+
+        SDL_DestroySurface(surface);
+    }
+
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+    return textureID;
 }
