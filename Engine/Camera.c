@@ -53,7 +53,7 @@ void ProcessInput(camera* cam, float deltaTime) {
         cam->pos.z += right.z * speed;
     }
 
-    // Up/down
+
     if (state[SDL_SCANCODE_E]) cam->pos.y += speed;
     if (state[SDL_SCANCODE_Q]) cam->pos.y -= speed;
 }

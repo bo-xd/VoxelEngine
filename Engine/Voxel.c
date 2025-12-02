@@ -1,50 +1,64 @@
 #include "Voxel.h"
-#include <GL/gl.h>
+#include <stdlib.h>
 
-void CreateVoxel(int x, int y, int z, int size) {
+VoxelMesh CreateVoxelMesh(float size) {
+    VoxelMesh mesh = {0};
     float s = size * 0.5f;
 
-    glPushMatrix();
-    glTranslatef(x, y, z);
+    float vertices[] = {
+        // Front
+        -s, -s,  s,   s, -s,  s,   s,  s,  s,
+        -s, -s,  s,   s,  s,  s,  -s,  s,  s,
+        // Back
+         s, -s, -s,  -s, -s, -s,  -s,  s, -s,
+         s, -s, -s,  -s,  s, -s,   s,  s, -s,
+        // Left
+        -s, -s, -s,  -s, -s,  s,  -s,  s,  s,
+        -s, -s, -s,  -s,  s,  s,  -s,  s, -s,
+        // Right
+         s, -s,  s,   s, -s, -s,   s,  s, -s,
+         s, -s,  s,   s,  s, -s,   s,  s,  s,
+        // Top
+        -s,  s,  s,   s,  s,  s,   s,  s, -s,
+        -s,  s,  s,   s,  s, -s,  -s,  s, -s,
+        // Bottom
+        -s, -s, -s,   s, -s, -s,   s, -s,  s,
+        -s, -s, -s,   s, -s,  s,  -s, -s,  s,
+    };
 
-    glBegin(GL_QUADS);
+    glGenVertexArrays(1, &mesh.VAO);
+    glGenBuffers(1, &mesh.VBO);
 
-    // Front
-    glVertex3f(-s, -s,  s);
-    glVertex3f( s, -s,  s);
-    glVertex3f( s,  s,  s);
-    glVertex3f(-s,  s,  s);
+    glBindVertexArray(mesh.VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, mesh.VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
-    // Back
-    glVertex3f( s, -s, -s);
-    glVertex3f(-s, -s, -s);
-    glVertex3f(-s,  s, -s);
-    glVertex3f( s,  s, -s);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
 
-    // Right
-    glVertex3f( s, -s,  s);
-    glVertex3f( s, -s, -s);
-    glVertex3f( s,  s, -s);
-    glVertex3f( s,  s,  s);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
 
-    // Left
-    glVertex3f(-s, -s, -s);
-    glVertex3f(-s, -s,  s);
-    glVertex3f(-s,  s,  s);
-    glVertex3f(-s,  s, -s);
+    return mesh;
+}
 
-    // Top
-    glVertex3f(-s,  s,  s);
-    glVertex3f( s,  s,  s);
-    glVertex3f( s,  s, -s);
-    glVertex3f(-s,  s, -s);
+void DrawVoxel(const VoxelMesh* voxel, shader* s, vec3 pos, mat4 view, mat4 projection)
+{
+    Shader_Use(s);
 
-    // Bottom
-    glVertex3f(-s, -s, -s);
-    glVertex3f( s, -s, -s);
-    glVertex3f( s, -s,  s);
-    glVertex3f(-s, -s,  s);
+    mat4 model = Mat4Identity();
+    model = Mat4Translate(model, pos);
 
-    glEnd();
-    glPopMatrix();
+    Shader_SetMat4(s, "model", &model);
+    Shader_SetMat4(s, "view", &view);
+    Shader_SetMat4(s, "projection", &projection);
+
+    glBindVertexArray(voxel->VAO);
+    glDrawArrays(GL_TRIANGLES, 0, 36);
+    glBindVertexArray(0);
+}
+
+void Shader_SetMat4(shader* s, const char* name, const mat4* mat) {
+    GLint loc = glGetUniformLocation(s->id, name);
+    glUniformMatrix4fv(loc, 1, GL_FALSE, mat->m);
 }

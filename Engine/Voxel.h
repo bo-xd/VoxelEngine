@@ -1,11 +1,17 @@
 #ifndef VOXEL_H
 #define VOXEL_H
 
-typedef struct {
-    int x,y,z;
-    int size;
-} Voxel;
+#include <GL/glew.h>
+#include "Shaderer.h"
+#include "utils/MathUtil.h"
 
-void CreateVoxel(int x , int y, int z, int size);
+typedef struct {
+    GLuint VAO;
+    GLuint VBO;
+} VoxelMesh;
+
+VoxelMesh CreateVoxelMesh(float size);
+void DrawVoxel(const VoxelMesh* voxel, shader* s, vec3 pos, mat4 view, mat4 projection);
+void Shader_SetMat4(shader* s, const char* name, const mat4* mat);
 
 #endif
