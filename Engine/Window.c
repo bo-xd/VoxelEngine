@@ -47,6 +47,7 @@ int CreateWindow(const char *title, int WIDTH, int HEIGHT) {
 
     VoxelMesh cubeMesh = CreateVoxelMesh(1.0f);
     shader cubeShader = Shader_Load("Shader/cube.vert", "Shader/cube.frag");
+    chunk* Chonk = CreateChunk((vec3){0,0,0});
 
     Window.Running = true;
     int lastTicks = SDL_GetTicks();
@@ -66,7 +67,7 @@ int CreateWindow(const char *title, int WIDTH, int HEIGHT) {
 
         ProcessInput(&cam, deltaTime);
 
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClearColor(135.0f / 255.0f, 206.0f / 255.0f, 235.0f / 255.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         float aspect = (float)WIDTH / HEIGHT;
@@ -77,8 +78,8 @@ int CreateWindow(const char *title, int WIDTH, int HEIGHT) {
         vec3 up = {0.0f, 1.0f, 0.0f};
         mat4 view = LookAt(cam.pos, target, up);
 
-        DrawVoxel(&cubeMesh, &cubeShader, (vec3){0,0,0}, view, projection);
-        DrawVoxel(&cubeMesh, &cubeShader, (vec3){2,0,0}, view, projection);
+        // DrawVoxel(&cubeMesh, &cubeShader, (vec3){0, 0, 0}, view, projection);
+        DrawChunk(Chonk, &cubeMesh, &cubeShader, view, projection);
 
         SDL_GL_SwapWindow(Window.window);
     }

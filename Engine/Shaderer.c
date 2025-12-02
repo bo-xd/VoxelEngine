@@ -1,8 +1,10 @@
 #include "Shaderer.h"
+#include <GL/gl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <GL/glew.h>
+#include <sys/types.h>
 
 static char* ReadFile(const char* path) {
     FILE* f = fopen(path, "rb");
@@ -98,4 +100,18 @@ void Shader_SetInt(shader* s, const char* name, int value) {
 void Shader_SetFloat(shader* s, const char* name, float value) {
     GLint loc = glGetUniformLocation(s->id, name);
     glUniform1f(loc, value);
+}
+
+
+void LoadCubeMap(const char* faces[], int count) {
+    for (int i =0; i < count; i ++) {
+     printf("Loading texture: %s\n", faces[i]);
+     shader s;
+
+     glGenTextures(1, &s.id);
+     glBindTexture(GL_TEXTURE_CUBE_MAP, s.id);
+     int width, height, channels;
+     for (uint i = 0; i < sizeof(*faces); i++) {
+
+     }
 }
