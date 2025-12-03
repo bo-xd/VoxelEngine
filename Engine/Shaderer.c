@@ -104,7 +104,6 @@ void Shader_SetFloat(shader* s, const char* name, float value) {
     glUniform1f(loc, value);
 }
 
-
 GLuint LoadCubeMap(const char* faces[], int count) {
     GLuint textureID;
     glGenTextures(1, &textureID);

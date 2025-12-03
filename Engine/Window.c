@@ -47,7 +47,7 @@ int CreateWindow(const char *title, int WIDTH, int HEIGHT) {
 
     int chunksize = 10;
     VoxelMesh cubeMesh = CreateVoxelMesh(1.0f);
-    shader cubeShader = Shader_Load("Shader/cube.vert", "Shader/cube.frag");
+    shader cubeShader = Shader_Load("Shaders/voxel/cube.vert", "Shaders/voxel/cube.frag");
     chunk* Chonk = CreateChunk((vec3){0,0,0}, chunksize);
 
     Window.Running = true;
