@@ -45,9 +45,10 @@ int CreateWindow(const char *title, int WIDTH, int HEIGHT) {
     camera cam;
     InitCamera(&cam, (vec3){1.0f, 1.0f, 5.0f});
 
+    int chunksize = 10;
     VoxelMesh cubeMesh = CreateVoxelMesh(1.0f);
     shader cubeShader = Shader_Load("Shader/cube.vert", "Shader/cube.frag");
-    chunk* Chonk = CreateChunk((vec3){0,0,0});
+    chunk* Chonk = CreateChunk((vec3){0,0,0}, chunksize);
 
     Window.Running = true;
     int lastTicks = SDL_GetTicks();
@@ -79,7 +80,7 @@ int CreateWindow(const char *title, int WIDTH, int HEIGHT) {
         mat4 view = LookAt(cam.pos, target, up);
 
         // DrawVoxel(&cubeMesh, &cubeShader, (vec3){0, 0, 0}, view, projection);
-        DrawChunk(Chonk, &cubeMesh, &cubeShader, view, projection);
+        DrawChunk(Chonk, &cubeMesh, &cubeShader, view, projection, chunksize);
 
         SDL_GL_SwapWindow(Window.window);
     }

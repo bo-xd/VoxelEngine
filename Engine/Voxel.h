@@ -18,8 +18,8 @@ typedef struct {
 
 VoxelMesh CreateVoxelMesh(float size);
 void DrawVoxel(const VoxelMesh* voxel, shader* s, vec3 pos, mat4 view, mat4 projection);
-chunk* CreateChunk(vec3 pos);
-void DrawChunk(const chunk* c, const VoxelMesh* voxel, shader* s, mat4 view, mat4 projection);
+chunk* CreateChunk(vec3 pos, int size);
+void DrawChunk(const chunk* c, const VoxelMesh* voxel, shader* s, mat4 view, mat4 projection, int size);
 void Shader_SetMat4(shader* s, const char* name, const mat4* mat);
 
 #endif

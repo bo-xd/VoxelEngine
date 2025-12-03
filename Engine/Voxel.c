@@ -63,32 +63,32 @@ void Shader_SetMat4(shader* s, const char* name, const mat4* mat) {
     glUniformMatrix4fv(loc, 1, GL_FALSE, mat->m);
 }
 
-chunk* CreateChunk(vec3 pos) {
+chunk* CreateChunk(vec3 pos, int size) {
     chunk* c = (chunk*)malloc(sizeof(chunk));
     if (!c) return NULL;
 
     c->position = pos;
 
-    for (int x = 0; x < 32; x++) {
+    for (int x = 0; x < size; x++) {
         for (int y = 0; y < 1; y++) {
-            for (int z = 0; z < 32; z++) {
+            for (int z = 0; z < size; z++) {
                 c->voxels[x][y][z] = 1;
             }
         }
     }
 
-    for (int x = 0; x < 32; x++)
-        for (int y = 1; y < 32; y++)
-            for (int z = 0; z < 32; z++)
+    for (int x = 0; x < size; x++)
+        for (int y = 1; y < size; y++)
+            for (int z = 0; z < size; z++)
                 c->voxels[x][y][z] = 0;
 
     return c;
 }
 
-void DrawChunk(const chunk* c, const VoxelMesh* voxel, shader* s, mat4 view, mat4 projection) {
-    for (int x = 0; x < 32; x++) {
-        for (int y = 0; y < 32; y++) {
-            for (int z = 0; z < 32; z++) {
+void DrawChunk(const chunk* c, const VoxelMesh* voxel, shader* s, mat4 view, mat4 projection, int size) {
+    for (int x = 0; x < size; x++) {
+        for (int y = 0; y < size; y++) {
+            for (int z = 0; z < size; z++) {
                 if (c->voxels[x][y][z] == 1) {
                     vec3 worldPos = {
                         c->position.x + x,
