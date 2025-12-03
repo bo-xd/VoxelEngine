@@ -60,6 +60,12 @@ int CreateWindow(const char *title, int WIDTH, int HEIGHT) {
                 Window.Running = false;
             if (event.type == SDL_EVENT_MOUSE_MOTION)
                 ProcessMouseMovement(&cam, event.motion.xrel, event.motion.yrel);
+            if (event.type == SDL_EVENT_WINDOW_RESIZED) {
+                WIDTH = event.window.data1;
+                HEIGHT = event.window.data2;
+                glViewport(0,0,WIDTH,HEIGHT);
+
+            };
         }
 
         int nowTicks = SDL_GetTicks();

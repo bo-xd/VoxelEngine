@@ -48,8 +48,8 @@ static GLuint Compile(GLenum type, const char* src) {
 
 shader Shader_Load(const char* vertPath, const char* fragPath) {
     shader s = {0};
-
     char* vertSrc = ReadFile(vertPath);
+
     char* fragSrc = ReadFile(fragPath);
 
     if (!vertSrc || !fragSrc) {
@@ -119,17 +119,7 @@ GLuint LoadCubeMap(const char* faces[], int count) {
         int bpp = SDL_BITSPERPIXEL(SDL_GetSurfaceProperties(surface)) / 8;
         GLenum format = (bpp == 4) ? GL_RGBA : GL_RGB;
 
-        glTexImage2D(
-            GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
-            0,
-            format,
-            surface->w,
-            surface->h,
-            0,
-            format,
-            GL_UNSIGNED_BYTE,
-            surface->pixels
-        );
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,0,format,surface->w,surface->h,0,format,GL_UNSIGNED_BYTE,surface->pixels);
 
         SDL_DestroySurface(surface);
     }
