@@ -7,7 +7,7 @@
 
 void InitCamera(camera* cam, vec3 pos) {
     cam->pos = pos;
-    cam->yaw = -90.0f;
+    cam->yaw = 90.0f;
     cam->pitch = 0.0f;
 }
 

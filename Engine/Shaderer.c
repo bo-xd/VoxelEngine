@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <GL/glew.h>
 #include <SDL3_image/SDL_image.h>
+#include <GL/glu.h>
 
 static char* ReadFile(const char* path) {
     FILE* f = fopen(path, "rb");
@@ -104,24 +105,76 @@ void Shader_SetFloat(shader* s, const char* name, float value) {
     glUniform1f(loc, value);
 }
 
-GLuint LoadCubeMap(const char* faces[], int count) {
-    GLuint textureID;
-    glGenTextures(1, &textureID);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+GLuint LoadTexture(const char* filename, int width, int height) {
+  GLuint texture;
+  unsigned char* data;
+  FILE *file;
 
-    for (int i = 0; i < count; i++) {
-        SDL_Surface* surface = SDL_LoadBMP(faces[i]);
-        if (!surface) {
-            printf("Failed to load cubemap texture %s: %s\n", faces[i], SDL_GetError());
-            continue;
-        }
+  file = fopen(filename, "rb");
+  if (file == NULL) {
+    perror("couldnt open file");
+    return 0;
+  }
 
-        int bpp = SDL_BITSPERPIXEL(SDL_GetSurfaceProperties(surface)) / 8;
-        GLenum format = (bpp == 4) ? GL_RGBA : GL_RGB;
+  data = (unsigned char*)malloc(width * height * 3);
+  fread(data, width * height * 3, 1, file);
 
-        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,0,format,surface->w,surface->h,0,format,GL_UNSIGNED_BYTE,surface->pixels);
+  fclose(file);
+  glGenTextures(1, &texture);
+  glBindTexture(GL_TEXTURE_2D, texture);
+  glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 
-        SDL_DestroySurface(surface);
+
+  glTextureParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+  glTextureParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+
+  gluBuild2DMipmaps(GL_TEXTURE_2D, 3, width, height, GL_RGB, GL_UNSIGNED_BYTE, data);
+  free(data);
+
+  return texture;
+}
+
+unsigned char* ExtractFace(SDL_Surface* src, int x, int y, int size) {
+    unsigned char* buffer = malloc(size * size * 4);
+
+    for (int row = 0; row < size; row++) {
+        memcpy(
+            buffer + row * size * 4,
+            (unsigned char*)src->pixels
+                + (y + row) * src->pitch
+                + (x * 4),
+            size * 4
+        );
+    }
+
+    return buffer;
+}
+
+GLuint LoadCubemapAtlas(const char* filename) {
+    SDL_Surface* atlas = IMG_Load(filename);
+    if (!atlas) {
+        printf("Failed to load atlas %s: %s\n", filename, SDL_GetError());
+        return 0;
+    }
+
+    int w = atlas->w;
+    int h = atlas->h;
+    int face = h / 3;
+
+    GLuint texID;
+    glGenTextures(1, &texID);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, texID);
+
+    int ox[6] = {0, 1, 2, 3, 1, 1};
+    int oy[6] = {1, 1, 1, 1, 0, 2};
+
+    for (int i = 0; i < 6; i++) {
+        unsigned char* data = ExtractFace(atlas, ox[i] * face, oy[i] * face, face);
+
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
+            0, GL_RGBA, face, face, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+
+        free(data);
     }
 
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -130,5 +183,6 @@ GLuint LoadCubeMap(const char* faces[], int count) {
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
-    return textureID;
+    SDL_DestroySurface(atlas);
+    return texID;
 }

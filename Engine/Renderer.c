@@ -1,4 +1,4 @@
-#include "Voxel.h"
+#include "Renderer.h"
 #include <stdlib.h>
 
 VoxelMesh CreateVoxelMesh(float size) {
@@ -100,4 +100,85 @@ void DrawChunk(const chunk* c, const VoxelMesh* voxel, shader* s, mat4 view, mat
             }
         }
     }
+}
+
+
+//skybox
+
+Skybox CreateSkybox() {
+    Skybox sb = {0};
+    float skyboxVertices[] = {
+        // pos
+        -1.0f,  1.0f, -1.0f,
+        -1.0f, -1.0f, -1.0f,
+         1.0f, -1.0f, -1.0f,
+         1.0f, -1.0f, -1.0f,
+         1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+        // Back
+        -1.0f, -1.0f,  1.0f,
+        -1.0f, -1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f,  1.0f,
+        -1.0f, -1.0f,  1.0f,
+        // Left
+         1.0f, -1.0f, -1.0f,
+         1.0f, -1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,
+         1.0f,  1.0f, -1.0f,
+         1.0f, -1.0f, -1.0f,
+        // Right
+        -1.0f, -1.0f,  1.0f,
+        -1.0f,  1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,
+         1.0f, -1.0f,  1.0f,
+        -1.0f, -1.0f,  1.0f,
+        // Top
+        -1.0f,  1.0f, -1.0f,
+         1.0f,  1.0f, -1.0f,
+         1.0f,  1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,
+        -1.0f,  1.0f,  1.0f,
+        -1.0f,  1.0f, -1.0f,
+        // Bottom
+        -1.0f, -1.0f, -1.0f,
+        -1.0f, -1.0f,  1.0f,
+         1.0f, -1.0f, -1.0f,
+         1.0f, -1.0f, -1.0f,
+        -1.0f, -1.0f,  1.0f,
+         1.0f, -1.0f,  1.0f
+    };
+
+    glGenVertexArrays(1, &sb.VAO);
+    glGenBuffers(1, &sb.VBO);
+    glBindVertexArray(sb.VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, sb.VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), skyboxVertices, GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    glBindVertexArray(0);
+    return sb;
+}
+
+void DrawSkybox(Skybox* sb, shader* s, GLuint texture, mat4 view, mat4 projection) {
+    glDepthMask(GL_FALSE);
+    Shader_Use(s);
+
+    mat4 viewNoTrans = view;
+    viewNoTrans.m[12] = 0;
+    viewNoTrans.m[13] = 0;
+    viewNoTrans.m[14] = 0;
+
+    Shader_SetMat4(s, "view", &viewNoTrans);
+    Shader_SetMat4(s, "projection", &projection);
+
+    glBindVertexArray(sb->VAO);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, texture);
+    glDrawArrays(GL_TRIANGLES, 0, 36);
+    glBindVertexArray(0);
+    glDepthMask(GL_TRUE);
 }

@@ -1,10 +1,11 @@
 #include "Window.h"
 #include "Camera.h"
-#include "Voxel.h"
+#include "Renderer.h"
 #include "utils/MathUtil.h"
 #include <SDL3/SDL.h>
 #include <GL/glew.h>
 #include <math.h>
+#include "Shaderer.h"
 
 int CreateWindow(const char *title, int WIDTH, int HEIGHT) {
     window_t Window = {0};
@@ -43,12 +44,23 @@ int CreateWindow(const char *title, int WIDTH, int HEIGHT) {
     glEnable(GL_DEPTH_TEST);
 
     camera cam;
-    InitCamera(&cam, (vec3){1.0f, 1.0f, 5.0f});
+    InitCamera(&cam, (vec3){0.0f, 2.0f, 0.0f});
 
+
+    // Voxels
     int chunksize = 10;
     VoxelMesh cubeMesh = CreateVoxelMesh(1.0f);
     shader cubeShader = Shader_Load("Shaders/voxel/cube.vert", "Shaders/voxel/cube.frag");
     chunk* Chonk = CreateChunk((vec3){0,0,0}, chunksize);
+
+    // Skybox
+    shader skyboxShader = Shader_Load("Shaders/skybox/sky.vert", "Shaders/skybox/sky.frag");
+    Shader_Use(&skyboxShader);
+    Shader_SetInt(&skyboxShader, "skybox", 0);
+
+    Skybox skybox = CreateSkybox();
+    GLuint skyboxTexture = LoadCubemapAtlas("textures/skybox/sky.png");
+
 
     Window.Running = true;
     int lastTicks = SDL_GetTicks();
@@ -85,6 +97,11 @@ int CreateWindow(const char *title, int WIDTH, int HEIGHT) {
         vec3 up = {0.0f, 1.0f, 0.0f};
         mat4 view = LookAt(cam.pos, target, up);
 
+        //skybox
+        DrawSkybox(&skybox, &skyboxShader, skyboxTexture, view, projection);
+        DrawChunk(Chonk, &cubeMesh, &cubeShader, view, projection, chunksize);
+
+        // Voxels
         // DrawVoxel(&cubeMesh, &cubeShader, (vec3){0, 0, 0}, view, projection);
         DrawChunk(Chonk, &cubeMesh, &cubeShader, view, projection, chunksize);
 
@@ -94,6 +111,10 @@ int CreateWindow(const char *title, int WIDTH, int HEIGHT) {
     glDeleteBuffers(1, &cubeMesh.VBO);
     glDeleteVertexArrays(1, &cubeMesh.VAO);
     Shader_Destroy(&cubeShader);
+    glDeleteBuffers(1, &skybox.VBO);
+    glDeleteVertexArrays(1, &skybox.VAO);
+    Shader_Destroy(&skyboxShader);
+
 
     SDL_GL_DestroyContext(Window.context);
     SDL_DestroyWindow(Window.window);
