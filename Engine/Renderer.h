@@ -20,6 +20,7 @@ typedef struct {
 VoxelMesh CreateVoxelMesh(float size);
 void DrawVoxel(const VoxelMesh* voxel, shader* s, vec3 pos, mat4 view, mat4 projection, vec3 color);
 
+bool IsFaceVisible(Chunk* c, int x, int y, int z, int dx, int dy, int dz);
 void DrawChunk(const Chunk* c, const VoxelMesh* voxel, shader* s, mat4 view, mat4 projection, int size, vec3 camPos, float maxDist);
 void Shader_SetMat4(shader* s, const char* name, const mat4* mat);
 

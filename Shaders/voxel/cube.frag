@@ -17,7 +17,7 @@ uniform DirLight dirLight;
 uniform vec3 viewPos;
 
 void main() {
-    vec3 ambient = dirLight.ambient * blockColor;
+    vec3 ambient = max(dirLight.ambient, 0.2) * blockColor;
 
     vec3 norm = normalize(Normal);
     vec3 lightDir = normalize(-dirLight.direction);
