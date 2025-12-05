@@ -1,11 +1,16 @@
 #include "Window.h"
 #include "Camera.h"
 #include "Renderer.h"
+#include "World/Block.h"
 #include "utils/MathUtil.h"
 #include <SDL3/SDL.h>
 #include <GL/glew.h>
 #include <math.h>
+#include <stdlib.h>
 #include "Shaderer.h"
+
+#define CHUNK_SIZE 16
+#define VIEW_DISTANCE 32.0f
 
 int CreateWindow(const char *title, int WIDTH, int HEIGHT) {
     window_t Window = {0};
@@ -46,21 +51,18 @@ int CreateWindow(const char *title, int WIDTH, int HEIGHT) {
     camera cam;
     InitCamera(&cam, (vec3){0.0f, 2.0f, 0.0f});
 
-
-    // Voxels
-    int chunksize = 10;
     VoxelMesh cubeMesh = CreateVoxelMesh(1.0f);
     shader cubeShader = Shader_Load("Shaders/voxel/cube.vert", "Shaders/voxel/cube.frag");
-    chunk* Chonk = CreateChunk((vec3){0,0,0}, chunksize);
 
-    // Skybox
+    Chunk* chunks[1];
+    chunks[0] = CreateChunk((vec3){0,0,0}, CHUNK_SIZE);
+
     shader skyboxShader = Shader_Load("Shaders/skybox/sky.vert", "Shaders/skybox/sky.frag");
     Shader_Use(&skyboxShader);
     Shader_SetInt(&skyboxShader, "skybox", 0);
 
     Skybox skybox = CreateSkybox();
     GLuint skyboxTexture = LoadCubemapAtlas("textures/skybox/sky.png");
-
 
     Window.Running = true;
     int lastTicks = SDL_GetTicks();
@@ -70,14 +72,15 @@ int CreateWindow(const char *title, int WIDTH, int HEIGHT) {
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_EVENT_QUIT)
                 Window.Running = false;
+
             if (event.type == SDL_EVENT_MOUSE_MOTION)
                 ProcessMouseMovement(&cam, event.motion.xrel, event.motion.yrel);
+
             if (event.type == SDL_EVENT_WINDOW_RESIZED) {
                 WIDTH = event.window.data1;
                 HEIGHT = event.window.data2;
                 glViewport(0,0,WIDTH,HEIGHT);
-
-            };
+            }
         }
 
         int nowTicks = SDL_GetTicks();
@@ -93,17 +96,15 @@ int CreateWindow(const char *title, int WIDTH, int HEIGHT) {
         mat4 projection = Perspective(60.0f, aspect, 0.1f, 100.0f);
 
         vec3 front = CameraFront(&cam);
-        vec3 target = { cam.pos.x + front.x, cam.pos.y + front.y, cam.pos.z + front.z };
+        vec3 target = Vec3Add(cam.pos, front);
         vec3 up = {0.0f, 1.0f, 0.0f};
         mat4 view = LookAt(cam.pos, target, up);
 
-        //skybox
         DrawSkybox(&skybox, &skyboxShader, skyboxTexture, view, projection);
-        DrawChunk(Chonk, &cubeMesh, &cubeShader, view, projection, chunksize);
 
-        // Voxels
-        // DrawVoxel(&cubeMesh, &cubeShader, (vec3){0, 0, 0}, view, projection);
-        DrawChunk(Chonk, &cubeMesh, &cubeShader, view, projection, chunksize);
+        for (int i = 0; i < 1; i++) {
+            DrawChunk(chunks[i], &cubeMesh, &cubeShader, view, projection, CHUNK_SIZE, cam.pos, VIEW_DISTANCE);
+        }
 
         SDL_GL_SwapWindow(Window.window);
     }
@@ -111,10 +112,13 @@ int CreateWindow(const char *title, int WIDTH, int HEIGHT) {
     glDeleteBuffers(1, &cubeMesh.VBO);
     glDeleteVertexArrays(1, &cubeMesh.VAO);
     Shader_Destroy(&cubeShader);
+
     glDeleteBuffers(1, &skybox.VBO);
     glDeleteVertexArrays(1, &skybox.VAO);
     Shader_Destroy(&skyboxShader);
 
+    for (int i = 0; i < 1; i++)
+        free(chunks[i]);
 
     SDL_GL_DestroyContext(Window.context);
     SDL_DestroyWindow(Window.window);

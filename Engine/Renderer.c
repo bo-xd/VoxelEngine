@@ -1,5 +1,4 @@
 #include "Renderer.h"
-#include <stdlib.h>
 
 VoxelMesh CreateVoxelMesh(float size) {
     VoxelMesh mesh = {0};
@@ -7,23 +6,23 @@ VoxelMesh CreateVoxelMesh(float size) {
 
     float vertices[] = {
         // Front
-        -s, -s,  s,   s, -s,  s,   s,  s,  s,
-        -s, -s,  s,   s,  s,  s,  -s,  s,  s,
+        -s,-s, s,  s,-s, s,  s, s, s,
+        -s,-s, s,  s, s, s, -s, s, s,
         // Back
-         s, -s, -s,  -s, -s, -s,  -s,  s, -s,
-         s, -s, -s,  -s,  s, -s,   s,  s, -s,
+         s,-s,-s, -s,-s,-s, -s, s,-s,
+         s,-s,-s, -s, s,-s,  s, s,-s,
         // Left
-        -s, -s, -s,  -s, -s,  s,  -s,  s,  s,
-        -s, -s, -s,  -s,  s,  s,  -s,  s, -s,
+        -s,-s,-s, -s,-s, s, -s, s, s,
+        -s,-s,-s, -s, s, s, -s, s,-s,
         // Right
-         s, -s,  s,   s, -s, -s,   s,  s, -s,
-         s, -s,  s,   s,  s, -s,   s,  s,  s,
+         s,-s, s,  s,-s,-s,  s, s,-s,
+         s,-s, s,  s, s,-s,  s, s, s,
         // Top
-        -s,  s,  s,   s,  s,  s,   s,  s, -s,
-        -s,  s,  s,   s,  s, -s,  -s,  s, -s,
+        -s, s, s,  s, s, s,  s, s,-s,
+        -s, s, s,  s, s,-s, -s, s,-s,
         // Bottom
-        -s, -s, -s,   s, -s, -s,   s, -s,  s,
-        -s, -s, -s,   s, -s,  s,  -s, -s,  s,
+        -s,-s,-s,  s,-s,-s,  s,-s, s,
+        -s,-s,-s,  s,-s, s, -s,-s, s
     };
 
     glGenVertexArrays(1, &mesh.VAO);
@@ -36,14 +35,16 @@ VoxelMesh CreateVoxelMesh(float size) {
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
-
     return mesh;
 }
 
-void DrawVoxel(const VoxelMesh* voxel, shader* s, vec3 pos, mat4 view, mat4 projection)
-{
+void Shader_SetMat4(shader* s, const char* name, const mat4* mat) {
+    GLint loc = glGetUniformLocation(s->id, name);
+    glUniformMatrix4fv(loc, 1, GL_FALSE, mat->m);
+}
+
+void DrawVoxel(const VoxelMesh* voxel, shader* s, vec3 pos, mat4 view, mat4 projection) {
     Shader_Use(s);
 
     mat4 model = Mat4Identity();
@@ -58,44 +59,17 @@ void DrawVoxel(const VoxelMesh* voxel, shader* s, vec3 pos, mat4 view, mat4 proj
     glBindVertexArray(0);
 }
 
-void Shader_SetMat4(shader* s, const char* name, const mat4* mat) {
-    GLint loc = glGetUniformLocation(s->id, name);
-    glUniformMatrix4fv(loc, 1, GL_FALSE, mat->m);
-}
-
-chunk* CreateChunk(vec3 pos, int size) {
-    chunk* c = (chunk*)malloc(sizeof(chunk));
-    if (!c) return NULL;
-
-    c->position = pos;
-
-    for (int x = 0; x < size; x++) {
-        for (int y = 0; y < 1; y++) {
-            for (int z = 0; z < size; z++) {
-                c->voxels[x][y][z] = 1;
-            }
-        }
-    }
-
-    for (int x = 0; x < size; x++)
-        for (int y = 1; y < size; y++)
-            for (int z = 0; z < size; z++)
-                c->voxels[x][y][z] = 0;
-
-    return c;
-}
-
-void DrawChunk(const chunk* c, const VoxelMesh* voxel, shader* s, mat4 view, mat4 projection, int size) {
+void DrawChunk(const Chunk* c, const VoxelMesh* voxel, shader* s, mat4 view, mat4 projection, int size, vec3 camPos, float maxDist) {
     for (int x = 0; x < size; x++) {
         for (int y = 0; y < size; y++) {
             for (int z = 0; z < size; z++) {
-                if (c->voxels[x][y][z] == 1) {
-                    vec3 worldPos = {
-                        c->position.x + x,
-                        c->position.y + y,
-                        c->position.z + z
-                    };
-                    DrawVoxel(voxel, s, worldPos, view, projection);
+                Block* b = c->blocks[x][y][z];
+                if (b && b->active) {
+                    vec3 diff = Vec3Subtract(b->position, camPos);
+                    float dist2 = Vec3LengthSquared(diff);
+                    if (dist2 <= maxDist * maxDist) {
+                        DrawVoxel(voxel, s, b->position, view, projection);
+                    }
                 }
             }
         }
@@ -103,62 +77,70 @@ void DrawChunk(const chunk* c, const VoxelMesh* voxel, shader* s, mat4 view, mat
 }
 
 
-//skybox
-
 Skybox CreateSkybox() {
     Skybox sb = {0};
+
     float skyboxVertices[] = {
-        // pos
-        -1.0f,  1.0f, -1.0f,
-        -1.0f, -1.0f, -1.0f,
-         1.0f, -1.0f, -1.0f,
-         1.0f, -1.0f, -1.0f,
-         1.0f,  1.0f, -1.0f,
-        -1.0f,  1.0f, -1.0f,
-        // Back
-        -1.0f, -1.0f,  1.0f,
-        -1.0f, -1.0f, -1.0f,
-        -1.0f,  1.0f, -1.0f,
-        -1.0f,  1.0f, -1.0f,
+        // Front face
         -1.0f,  1.0f,  1.0f,
         -1.0f, -1.0f,  1.0f,
-        // Left
-         1.0f, -1.0f, -1.0f,
+         1.0f, -1.0f,  1.0f,
          1.0f, -1.0f,  1.0f,
          1.0f,  1.0f,  1.0f,
-         1.0f,  1.0f,  1.0f,
+        -1.0f,  1.0f,  1.0f,
+
+        // Back face
+        -1.0f, -1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+         1.0f,  1.0f, -1.0f,
          1.0f,  1.0f, -1.0f,
          1.0f, -1.0f, -1.0f,
-        // Right
-        -1.0f, -1.0f,  1.0f,
-        -1.0f,  1.0f,  1.0f,
-         1.0f,  1.0f,  1.0f,
-         1.0f,  1.0f,  1.0f,
-         1.0f, -1.0f,  1.0f,
-        -1.0f, -1.0f,  1.0f,
-        // Top
+        -1.0f, -1.0f, -1.0f,
+
+        // Left face
         -1.0f,  1.0f, -1.0f,
-         1.0f,  1.0f, -1.0f,
-         1.0f,  1.0f,  1.0f,
-         1.0f,  1.0f,  1.0f,
-        -1.0f,  1.0f,  1.0f,
-        -1.0f,  1.0f, -1.0f,
-        // Bottom
         -1.0f, -1.0f, -1.0f,
         -1.0f, -1.0f,  1.0f,
-         1.0f, -1.0f, -1.0f,
-         1.0f, -1.0f, -1.0f,
         -1.0f, -1.0f,  1.0f,
-         1.0f, -1.0f,  1.0f
+        -1.0f,  1.0f,  1.0f,
+        -1.0f,  1.0f, -1.0f,
+
+        // Right face
+         1.0f,  1.0f,  1.0f,
+         1.0f, -1.0f,  1.0f,
+         1.0f, -1.0f, -1.0f,
+         1.0f, -1.0f, -1.0f,
+         1.0f,  1.0f, -1.0f,
+         1.0f,  1.0f,  1.0f,
+
+        // Top face
+        -1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,
+         1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+
+        // Bottom face
+        -1.0f, -1.0f, -1.0f,
+         1.0f, -1.0f, -1.0f,
+         1.0f, -1.0f,  1.0f,
+         1.0f, -1.0f,  1.0f,
+        -1.0f, -1.0f,  1.0f,
+        -1.0f, -1.0f, -1.0f
     };
+
 
     glGenVertexArrays(1, &sb.VAO);
     glGenBuffers(1, &sb.VBO);
+
     glBindVertexArray(sb.VAO);
     glBindBuffer(GL_ARRAY_BUFFER, sb.VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), skyboxVertices, GL_STATIC_DRAW);
+
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
+
     glBindVertexArray(0);
     return sb;
 }
@@ -180,5 +162,6 @@ void DrawSkybox(Skybox* sb, shader* s, GLuint texture, mat4 view, mat4 projectio
     glBindTexture(GL_TEXTURE_CUBE_MAP, texture);
     glDrawArrays(GL_TRIANGLES, 0, 36);
     glBindVertexArray(0);
+
     glDepthMask(GL_TRUE);
 }
