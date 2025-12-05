@@ -34,3 +34,12 @@ Chunk* CreateChunk(vec3 pos, int size) {
 
     return c;
 }
+
+vec3 BlockTypeToColor(block_type type) {
+    switch(type) {
+        case BLOCK_GRASS: return (vec3){0.0f, 1.0f, 0.0f};
+        case BLOCK_STONE: return (vec3){0.5f, 0.5f, 0.5f};
+        case BLOCK_WOOD:  return (vec3){0.55f, 0.27f, 0.07f};
+        default:          return (vec3){1.0f, 1.0f, 1.0f};
+    }
+}

@@ -8,8 +8,10 @@
 #include <math.h>
 #include <stdlib.h>
 #include "Shaderer.h"
+#include "utils/FreeUtil.h"
+#include "World/Lighting.h"
 
-#define CHUNK_SIZE 16
+#define CHUNK_SIZE 32
 #define VIEW_DISTANCE 32.0f
 
 int CreateWindow(const char *title, int WIDTH, int HEIGHT) {
@@ -50,6 +52,14 @@ int CreateWindow(const char *title, int WIDTH, int HEIGHT) {
 
     camera cam;
     InitCamera(&cam, (vec3){0.0f, 2.0f, 0.0f});
+
+    DirectionalLight sunlight = {
+        .direction = { -0.3f, -1.0f, -0.3f },
+        .color = { 1.0f, 1.0f, 1.0f },
+        .ambient = 0.2f,
+        .diffuse = 0.7f,
+        .specular = 0.5f
+    };
 
     VoxelMesh cubeMesh = CreateVoxelMesh(1.0f);
     shader cubeShader = Shader_Load("Shaders/voxel/cube.vert", "Shaders/voxel/cube.frag");
@@ -102,6 +112,9 @@ int CreateWindow(const char *title, int WIDTH, int HEIGHT) {
 
         DrawSkybox(&skybox, &skyboxShader, skyboxTexture, view, projection);
 
+        Shader_Use(&cubeShader);
+        SetDirectionalLightUniforms(&sunlight, cubeShader.id, cam.pos);
+
         for (int i = 0; i < 1; i++) {
             DrawChunk(chunks[i], &cubeMesh, &cubeShader, view, projection, CHUNK_SIZE, cam.pos, VIEW_DISTANCE);
         }
@@ -109,13 +122,8 @@ int CreateWindow(const char *title, int WIDTH, int HEIGHT) {
         SDL_GL_SwapWindow(Window.window);
     }
 
-    glDeleteBuffers(1, &cubeMesh.VBO);
-    glDeleteVertexArrays(1, &cubeMesh.VAO);
-    Shader_Destroy(&cubeShader);
-
-    glDeleteBuffers(1, &skybox.VBO);
-    glDeleteVertexArrays(1, &skybox.VAO);
-    Shader_Destroy(&skyboxShader);
+    FreeShader(1, &cubeMesh.VBO, &cubeShader);
+    FreeShader(1, &skybox.VBO, &skyboxShader);
 
     for (int i = 0; i < 1; i++)
         free(chunks[i]);

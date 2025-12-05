@@ -5,11 +5,11 @@
 #include "Engine/Window.c"
 #include "Engine/Renderer.c"
 #include "Engine/Camera.c"
-#include "Engine/World/Block.c"
 #include "Engine/Shaderer.c"
-
+#include "Engine/World/Block.c"
+#include "Engine/World/Lighting.c"
 
 int main(int argc, char *argv[]) {
-    CreateWindow("Hi", 1920, 1920);
+    CreateWindow("Engine", 1920, 1920);
     return 0;
 }

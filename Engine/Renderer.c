@@ -1,28 +1,30 @@
 #include "Renderer.h"
+#include "World/Block.h"
 
 VoxelMesh CreateVoxelMesh(float size) {
     VoxelMesh mesh = {0};
     float s = size * 0.5f;
 
+    // Each vertex: position(x,y,z) + normal(x,y,z)
     float vertices[] = {
-        // Front
-        -s,-s, s,  s,-s, s,  s, s, s,
-        -s,-s, s,  s, s, s, -s, s, s,
-        // Back
-         s,-s,-s, -s,-s,-s, -s, s,-s,
-         s,-s,-s, -s, s,-s,  s, s,-s,
-        // Left
-        -s,-s,-s, -s,-s, s, -s, s, s,
-        -s,-s,-s, -s, s, s, -s, s,-s,
-        // Right
-         s,-s, s,  s,-s,-s,  s, s,-s,
-         s,-s, s,  s, s,-s,  s, s, s,
-        // Top
-        -s, s, s,  s, s, s,  s, s,-s,
-        -s, s, s,  s, s,-s, -s, s,-s,
-        // Bottom
-        -s,-s,-s,  s,-s,-s,  s,-s, s,
-        -s,-s,-s,  s,-s, s, -s,-s, s
+        // Front face (normal 0,0,1)
+        -s,-s, s,  0,0,1,   s,-s, s,  0,0,1,   s, s, s,  0,0,1,
+        -s,-s, s,  0,0,1,   s, s, s,  0,0,1,  -s, s, s,  0,0,1,
+        // Back face (normal 0,0,-1)
+         s,-s,-s,  0,0,-1,  -s,-s,-s, 0,0,-1, -s, s,-s, 0,0,-1,
+         s,-s,-s,  0,0,-1,  -s, s,-s, 0,0,-1,  s, s,-s, 0,0,-1,
+        // Left face (normal -1,0,0)
+        -s,-s,-s, -1,0,0,  -s,-s, s, -1,0,0,  -s, s, s, -1,0,0,
+        -s,-s,-s, -1,0,0,  -s, s, s, -1,0,0,  -s, s,-s, -1,0,0,
+        // Right face (normal 1,0,0)
+         s,-s, s,  1,0,0,   s,-s,-s, 1,0,0,   s, s,-s, 1,0,0,
+         s,-s, s,  1,0,0,   s, s,-s, 1,0,0,   s, s, s,  1,0,0,
+        // Top face (normal 0,1,0)
+        -s, s, s, 0,1,0,   s, s, s, 0,1,0,   s, s,-s, 0,1,0,
+        -s, s, s, 0,1,0,   s, s,-s, 0,1,0,  -s, s,-s, 0,1,0,
+        // Bottom face (normal 0,-1,0)
+        -s,-s,-s, 0,-1,0,  s,-s,-s, 0,-1,0,  s,-s, s, 0,-1,0,
+        -s,-s,-s, 0,-1,0,  s,-s, s, 0,-1,0, -s,-s, s, 0,-1,0
     };
 
     glGenVertexArrays(1, &mesh.VAO);
@@ -32,10 +34,16 @@ VoxelMesh CreateVoxelMesh(float size) {
     glBindBuffer(GL_ARRAY_BUFFER, mesh.VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    // position
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
+    // normal
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
 
+    mesh.vertexCount = 36;
     glBindVertexArray(0);
+
     return mesh;
 }
 
@@ -44,7 +52,7 @@ void Shader_SetMat4(shader* s, const char* name, const mat4* mat) {
     glUniformMatrix4fv(loc, 1, GL_FALSE, mat->m);
 }
 
-void DrawVoxel(const VoxelMesh* voxel, shader* s, vec3 pos, mat4 view, mat4 projection) {
+void DrawVoxel(const VoxelMesh* voxel, shader* s, vec3 pos, mat4 view, mat4 projection, vec3 color) {
     Shader_Use(s);
 
     mat4 model = Mat4Identity();
@@ -54,10 +62,14 @@ void DrawVoxel(const VoxelMesh* voxel, shader* s, vec3 pos, mat4 view, mat4 proj
     Shader_SetMat4(s, "view", &view);
     Shader_SetMat4(s, "projection", &projection);
 
+    GLint colorLoc = glGetUniformLocation(s->id, "blockColor");
+    glUniform3f(colorLoc, color.x, color.y, color.z);
+
     glBindVertexArray(voxel->VAO);
-    glDrawArrays(GL_TRIANGLES, 0, 36);
+    glDrawArrays(GL_TRIANGLES, 0, voxel->vertexCount);
     glBindVertexArray(0);
 }
+
 
 void DrawChunk(const Chunk* c, const VoxelMesh* voxel, shader* s, mat4 view, mat4 projection, int size, vec3 camPos, float maxDist) {
     for (int x = 0; x < size; x++) {
@@ -68,14 +80,14 @@ void DrawChunk(const Chunk* c, const VoxelMesh* voxel, shader* s, mat4 view, mat
                     vec3 diff = Vec3Subtract(b->position, camPos);
                     float dist2 = Vec3LengthSquared(diff);
                     if (dist2 <= maxDist * maxDist) {
-                        DrawVoxel(voxel, s, b->position, view, projection);
+                        vec3 color = BlockTypeToColor(b->type);
+                        DrawVoxel(voxel, s, b->position, view, projection, color);
                     }
                 }
             }
         }
     }
 }
-
 
 Skybox CreateSkybox() {
     Skybox sb = {0};

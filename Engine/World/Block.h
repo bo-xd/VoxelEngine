@@ -24,5 +24,6 @@ typedef struct {
 
 Block* CreateBlock(vec3 pos, block_type type);
 Chunk* CreateChunk(vec3 pos, int size);
+vec3 BlockTypeToColor(block_type type);
 
 #endif
