@@ -20,6 +20,15 @@ static vec3 Vec3Normalize(vec3 v) {
 static vec3 Vec3Cross(vec3 a, vec3 b) { return (vec3){a.y*b.z - a.z*b.y, a.z*b.x - a.x*b.z, a.x*b.y - a.y*b.x}; }
 static float Vec3Dot(vec3 a, vec3 b) { return a.x*b.x + a.y*b.y + a.z*b.z; }
 
+vec3 Vec3Lerp(vec3 a, vec3 b, float t) {
+    return (vec3){
+        a.x + (b.x - a.x) * t,
+        a.y + (b.y - a.y) * t,
+        a.z + (b.z - a.z) * t
+    };
+}
+
+
 static mat4 Mat4Identity() {
     return (mat4){{
         1,0,0,0,

@@ -5,7 +5,6 @@
 #include "utils/MathUtil.h"
 #include <SDL3/SDL.h>
 #include <GL/glew.h>
-#include <math.h>
 #include <stdlib.h>
 #include "Shaderer.h"
 #include "utils/FreeUtil.h"
@@ -66,13 +65,11 @@ int CreateWindow(const char *title, int WIDTH, int HEIGHT) {
 
     Chunk* chunks[1];
     chunks[0] = CreateChunk((vec3){0,0,0}, CHUNK_SIZE, 0.2f);
+    BuildChunkMesh(chunks[0], CHUNK_SIZE, 0.2f);
 
-    shader skyboxShader = Shader_Load("Shaders/skybox/sky.vert", "Shaders/skybox/sky.frag");
-    Shader_Use(&skyboxShader);
-    Shader_SetInt(&skyboxShader, "skybox", 0);
+    shader skyShader = Shader_Load("Shaders/skybox/sky.vert", "Shaders/skybox/sky.frag");
 
-    Skybox skybox = CreateSkybox();
-    GLuint skyboxTexture = LoadCubemapAtlas("textures/skybox/sky.png");
+    SkyDome skyDome = CreateSkyDome(64, 32, (vec3){0.53f, 0.81f, 0.98f}, (vec3){1.0f, 1.0f, 1.0f});
 
     Window.Running = true;
     int lastTicks = SDL_GetTicks();
@@ -99,7 +96,7 @@ int CreateWindow(const char *title, int WIDTH, int HEIGHT) {
 
         ProcessInput(&cam, deltaTime);
 
-        glClearColor(135.0f / 255.0f, 206.0f / 255.0f, 235.0f / 255.0f, 1.0f);
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         float aspect = (float)WIDTH / HEIGHT;
@@ -110,7 +107,13 @@ int CreateWindow(const char *title, int WIDTH, int HEIGHT) {
         vec3 up = {0.0f, 1.0f, 0.0f};
         mat4 view = LookAt(cam.pos, target, up);
 
-        DrawSkybox(&skybox, &skyboxShader, skyboxTexture, view, projection);
+        Shader_Use(&skyShader);
+        GLint topLoc = glGetUniformLocation(skyShader.id, "topColor");
+        GLint horLoc = glGetUniformLocation(skyShader.id, "horizonColor");
+        glUniform3f(topLoc, 0.53f, 0.81f, 0.98f);
+        glUniform3f(horLoc, 1.0f, 1.0f, 1.0f);
+
+        DrawSkyDome(&skyDome, &skyShader, view, projection);
 
         Shader_Use(&cubeShader);
         SetDirectionalLightUniforms(&sunlight, cubeShader.id, cam.pos);
@@ -123,10 +126,16 @@ int CreateWindow(const char *title, int WIDTH, int HEIGHT) {
     }
 
     FreeShader(1, &cubeMesh.VBO, &cubeShader);
-    FreeShader(1, &skybox.VBO, &skyboxShader);
+    FreeSkyDome(&skyDome);
 
-    for (int i = 0; i < 1; i++)
+    for (int i = 0; i < 1; i++) {
+        FreeChunkMesh(chunks[i]);
+        for (int x=0;x<CHUNK_SIZE;x++)
+         for (int y=0;y<CHUNK_SIZE;y++)
+          for (int z=0;z<CHUNK_SIZE;z++)
+            if (chunks[i]->blocks[x][y][z]) free(chunks[i]->blocks[x][y][z]);
         free(chunks[i]);
+    }
 
     SDL_GL_DestroyContext(Window.context);
     SDL_DestroyWindow(Window.window);

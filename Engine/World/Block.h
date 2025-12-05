@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include "../utils/MathUtil.h"
+#include <GL/gl.h>
 
 typedef enum {
     BLOCK_GRASS,
@@ -20,11 +21,13 @@ typedef struct {
 typedef struct {
     Block* blocks[32][32][32];
     vec3 position;
+    GLuint meshVAO;
+    GLuint meshVBO;
+    GLuint meshVertexCount;
 } Chunk;
 
-
 Block* CreateBlock(vec3 pos, block_type type);
-Chunk* CreateChunk(vec3 pos, int size, float voxelsize);
+Chunk* CreateChunk(vec3 pos, int size, float voxelSize);
 vec3 BlockTypeToColor(block_type type);
 
 #endif
