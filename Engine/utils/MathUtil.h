@@ -5,6 +5,7 @@
 
 typedef struct { float x, y, z; } vec3;
 typedef struct { float m[16]; } mat4;
+typedef struct { float x, y, z, w; } vec4;
 
 static vec3 Vec3Add(vec3 a, vec3 b) { return (vec3){a.x + b.x, a.y + b.y, a.z + b.z}; }
 static vec3 Vec3Subtract(vec3 a, vec3 b) { return (vec3){a.x - b.x, a.y - b.y, a.z - b.z}; }
@@ -16,9 +17,7 @@ static vec3 Vec3Normalize(vec3 v) {
     if (len == 0.0f) return (vec3){0,0,0};
     return Vec3Scale(v, 1.0f/len);
 }
-static vec3 Vec3Cross(vec3 a, vec3 b) {
-    return (vec3){a.y*b.z - a.z*b.y, a.z*b.x - a.x*b.z, a.x*b.y - a.y*b.x};
-}
+static vec3 Vec3Cross(vec3 a, vec3 b) { return (vec3){a.y*b.z - a.z*b.y, a.z*b.x - a.x*b.z, a.x*b.y - a.y*b.x}; }
 static float Vec3Dot(vec3 a, vec3 b) { return a.x*b.x + a.y*b.y + a.z*b.z; }
 
 static mat4 Mat4Identity() {
@@ -62,6 +61,24 @@ static mat4 Perspective(float fov, float aspect, float near, float far) {
         0, 0, (far+near)/(near-far), -1,
         0, 0, (2*far*near)/(near-far), 0
     }};
+}
+
+static vec4 Mat4MultiplyVec4(mat4 m, vec4 v) {
+    return (vec4){
+        m.m[0]*v.x + m.m[4]*v.y + m.m[8]*v.z + m.m[12]*v.w,
+        m.m[1]*v.x + m.m[5]*v.y + m.m[9]*v.z + m.m[13]*v.w,
+        m.m[2]*v.x + m.m[6]*v.y + m.m[10]*v.z + m.m[14]*v.w,
+        m.m[3]*v.x + m.m[7]*v.y + m.m[11]*v.z + m.m[15]*v.w
+    };
+}
+
+static mat4 Mat4Multiply(mat4 a, mat4 b) {
+    mat4 r = {0};
+    for(int row=0; row<4; row++)
+        for(int col=0; col<4; col++)
+            for(int k=0; k<4; k++)
+                r.m[row + col*4] += a.m[row + k*4]*b.m[k + col*4];
+    return r;
 }
 
 #endif

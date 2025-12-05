@@ -14,6 +14,7 @@ typedef struct {
     bool active;
     block_type type;
     vec3 position;
+    vec3 color;
 } Block;
 
 typedef struct {
@@ -23,7 +24,7 @@ typedef struct {
 
 
 Block* CreateBlock(vec3 pos, block_type type);
-Chunk* CreateChunk(vec3 pos, int size);
+Chunk* CreateChunk(vec3 pos, int size, float voxelsize);
 vec3 BlockTypeToColor(block_type type);
 
 #endif

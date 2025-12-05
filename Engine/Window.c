@@ -61,11 +61,11 @@ int CreateWindow(const char *title, int WIDTH, int HEIGHT) {
         .specular = 0.5f
     };
 
-    VoxelMesh cubeMesh = CreateVoxelMesh(1.0f);
+    VoxelMesh cubeMesh = CreateVoxelMesh(0.2f);
     shader cubeShader = Shader_Load("Shaders/voxel/cube.vert", "Shaders/voxel/cube.frag");
 
     Chunk* chunks[1];
-    chunks[0] = CreateChunk((vec3){0,0,0}, CHUNK_SIZE);
+    chunks[0] = CreateChunk((vec3){0,0,0}, CHUNK_SIZE, 0.2f);
 
     shader skyboxShader = Shader_Load("Shaders/skybox/sky.vert", "Shaders/skybox/sky.frag");
     Shader_Use(&skyboxShader);
