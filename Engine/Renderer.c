@@ -1,26 +1,7 @@
 #include "Renderer.h"
+#include "World/Lighting.h"
 #include <stdlib.h>
 #include <math.h>
-
-static bool VoxelInFrustum(vec3 pos, mat4 view, mat4 proj, float voxelSize){
-    mat4 vp = Mat4Multiply(proj, view);
-    vec4 corners[8] = {
-        {pos.x-voxelSize/2,pos.y-voxelSize/2,pos.z-voxelSize/2,1},
-        {pos.x+voxelSize/2,pos.y-voxelSize/2,pos.z-voxelSize/2,1},
-        {pos.x-voxelSize/2,pos.y+voxelSize/2,pos.z-voxelSize/2,1},
-        {pos.x+voxelSize/2,pos.y+voxelSize/2,pos.z-voxelSize/2,1},
-        {pos.x-voxelSize/2,pos.y-voxelSize/2,pos.z+voxelSize/2,1},
-        {pos.x+voxelSize/2,pos.y-voxelSize/2,pos.z+voxelSize/2,1},
-        {pos.x-voxelSize/2,pos.y+voxelSize/2,pos.z+voxelSize/2,1},
-        {pos.x+voxelSize/2,pos.y+voxelSize/2,pos.z+voxelSize/2,1}
-    };
-    for(int i=0;i<8;i++){
-        vec4 clip=Mat4MultiplyVec4(vp,corners[i]);
-        if(clip.x>=-clip.w&&clip.x<=clip.w&&clip.y>=-clip.w&&clip.y<=clip.w&&clip.z>=-clip.w&&clip.z<=clip.w)
-            return true;
-    }
-    return false;
-}
 
 bool IsFaceVisible(Chunk* c, int x, int y, int z, int dx, int dy, int dz) {
     int nx = x + dx;
@@ -31,6 +12,26 @@ bool IsFaceVisible(Chunk* c, int x, int y, int z, int dx, int dy, int dz) {
     Block* n = c->blocks[nx][ny][nz];
     if (!n) return true;
     return !n->active;
+}
+
+static int IsBlockSolidAt(Chunk* c, int x, int y, int z, int size) {
+    if (x < 0 || x >= size || y < 0 || y >= size || z < 0 || z >= size)
+        return 0;
+    Block* b = c->blocks[x][y][z];
+    return (b && b->active) ? 1 : 0;
+}
+
+static float CalculateVertexAO(Chunk* c, int x, int y, int z, int size,
+                               int dx, int dy, int dz,
+                               int du1, int dv1, int du2, int dv2) {
+    int side1 = IsBlockSolidAt(c, x + du1, y + dv1, z + (dx ? du1 : (dy ? dv1 : du1)), size);
+    int side2 = IsBlockSolidAt(c, x + du2, y + dv2, z + (dx ? du2 : (dy ? dv2 : du2)), size);
+    int corner = IsBlockSolidAt(c, x + du1 + du2, y + dv1 + dv2, z + (dx ? (du1 + du2) : (dy ? (dv1 + dv2) : (du1 + du2))), size);
+
+    if (side1 && side2) {
+        return 0.0f;
+    }
+    return 1.0f - (side1 + side2 + corner) * 0.2f;
 }
 
 VoxelMesh CreateVoxelMesh(float size) {
@@ -64,7 +65,6 @@ VoxelMesh CreateVoxelMesh(float size) {
     return mesh;
 }
 
-
 void DrawVoxel(const VoxelMesh* voxel, shader* s, vec3 pos, mat4 view, mat4 projection, vec3 color) {
     Shader_Use(s);
     mat4 model = Mat4Translate(Mat4Identity(), pos);
@@ -80,13 +80,8 @@ void DrawVoxel(const VoxelMesh* voxel, shader* s, vec3 pos, mat4 view, mat4 proj
 
 void DrawChunk(const Chunk* c, const VoxelMesh* voxel, shader* s, mat4 view, mat4 projection, int size, vec3 camPos, float maxDist) {
     if (!c) return;
-    vec3 chunkCenter = {c->position.x+size*0.1f, c->position.y+size*0.1f, c->position.z+size*0.1f};
-    float chunkExtent = sqrtf(3.0f)*0.1f*size;
-    vec3 diff = Vec3Subtract(chunkCenter, camPos);
-    float dist2 = Vec3LengthSquared(diff);
-    if (dist2 > (maxDist+chunkExtent)*(maxDist+chunkExtent)) return;
-    if (!VoxelInFrustum(chunkCenter, view, projection, chunkExtent)) return;
     if (c->meshVAO==0||c->meshVertexCount==0) return;
+
     Shader_Use(s);
     Shader_SetMat4(s,"model",&(mat4){.m={1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1}});
     Shader_SetMat4(s,"view",&view);
@@ -124,7 +119,7 @@ SkyDome CreateSkyDome(int slices, int stacks, vec3 topColor, vec3 bottomColor) {
             float x10 = r1*cosf(theta0), z10 = r1*sinf(theta0);
             float x11 = r1*cosf(theta1), z11 = r1*sinf(theta1);
 
-            float t0 = (y0 + 1.0f) * 0.5f; // map y [-1,1] -> [0,1]
+            float t0 = (y0 + 1.0f) * 0.5f;
             float t1 = (y1 + 1.0f) * 0.5f;
 
             vec3 color0 = {
@@ -138,7 +133,6 @@ SkyDome CreateSkyDome(int slices, int stacks, vec3 topColor, vec3 bottomColor) {
                 bottomColor.z*(1.0f-t1)+topColor.z*t1
             };
 
-            // Triangle 1
             data[idx++] = x10; data[idx++] = y1; data[idx++] = z10;
             data[idx++] = color1.x; data[idx++] = color1.y; data[idx++] = color1.z;
 
@@ -148,7 +142,6 @@ SkyDome CreateSkyDome(int slices, int stacks, vec3 topColor, vec3 bottomColor) {
             data[idx++] = x01; data[idx++] = y0; data[idx++] = z01;
             data[idx++] = color0.x; data[idx++] = color0.y; data[idx++] = color0.z;
 
-            // Triangle 2
             data[idx++] = x10; data[idx++] = y1; data[idx++] = z10;
             data[idx++] = color1.x; data[idx++] = color1.y; data[idx++] = color1.z;
 
@@ -179,7 +172,6 @@ SkyDome CreateSkyDome(int slices, int stacks, vec3 topColor, vec3 bottomColor) {
     return dome;
 }
 
-
 void DrawSkyDome(SkyDome* dome, shader* s, mat4 view, mat4 projection) {
     glDepthMask(GL_FALSE);
     Shader_Use(s);
@@ -198,15 +190,12 @@ void DrawSkyDome(SkyDome* dome, shader* s, mat4 view, mat4 projection) {
     glDepthMask(GL_TRUE);
 }
 
-
-
 void FreeSkyDome(SkyDome* dome){
     if(!dome) return;
     if(dome->VAO){glDeleteVertexArrays(1,&dome->VAO);dome->VAO=0;}
     if(dome->VBO){glDeleteBuffers(1,&dome->VBO);dome->VBO=0;}
     dome->vertexCount=0;
 }
-
 
 void BuildChunkMesh(Chunk* c,int size,float voxelSize) {
     if(!c) return;
@@ -216,6 +205,7 @@ void BuildChunkMesh(Chunk* c,int size,float voxelSize) {
     float* data=NULL;
     size_t capacity=0,count=0;
     float s=voxelSize*0.5f;
+
     const int faces[6][3]={{0,0,1},{0,0,-1},{-1,0,0},{1,0,0},{0,1,0},{0,-1,0}};
     const float faceVerts[6][6][3]={{
         {-s,-s,s},{s,-s,s},{s,s,s},{-s,-s,s},{s,s,s},{-s,s,s}},
@@ -226,13 +216,23 @@ void BuildChunkMesh(Chunk* c,int size,float voxelSize) {
         {{-s,-s,-s},{s,-s,-s},{s,-s,s},{-s,-s,-s},{s,-s,s},{-s,-s,s}}
     };
     const float faceNormals[6][3]={{0,0,1},{0,0,-1},{-1,0,0},{1,0,0},{0,1,0},{0,-1,0}};
+
+    const int aoOffsets[6][4][3] = {
+        {{-1,-1,0},{1,-1,0},{1,1,0},{-1,1,0}},
+        {{1,-1,0},{-1,-1,0},{-1,1,0},{1,1,0}},
+        {{0,-1,-1},{0,-1,1},{0,1,1},{0,1,-1}},
+        {{0,-1,1},{0,-1,-1},{0,1,-1},{0,1,1}},
+        {{-1,0,-1},{1,0,-1},{1,0,1},{-1,0,1}},
+        {{-1,0,1},{1,0,1},{1,0,-1},{-1,0,-1}}
+    };
+
     for(int x=0;x<size;x++) for(int y=0;y<size;y++) for(int z=0;z<size;z++){
         Block* b=c->blocks[x][y][z];
         if(!b||!b->active) continue;
         for(int f=0;f<6;f++){
             int dx=faces[f][0],dy=faces[f][1],dz=faces[f][2];
             if(!IsFaceVisible(c,x,y,z,dx,dy,dz)) continue;
-            size_t need=count+6*9;
+            size_t need=count+6*10;
             if(need>capacity){
                 size_t newcap=capacity?capacity*2:1024;
                 while(newcap<need) newcap*=2;
@@ -240,24 +240,35 @@ void BuildChunkMesh(Chunk* c,int size,float voxelSize) {
                 if(!tmp){free(data);return;}
                 data=tmp;capacity=newcap;
             }
+
+            float ao[4];
+            for(int i=0;i<4;i++){
+                int ox=aoOffsets[f][i][0];
+                int oy=aoOffsets[f][i][1];
+                int oz=aoOffsets[f][i][2];
+
+                int side1=IsBlockSolidAt(c,x+ox,y+oy,z+oz,size);
+                int side2=IsBlockSolidAt(c,x+dx,y+dy,z+dz,size);
+                int corner=IsBlockSolidAt(c,x+ox+dx,y+oy+dy,z+oz+dz,size);
+
+                if(side1&&side2) ao[i]=0.2f;
+                else ao[i]=1.0f-(side1+side2+corner)*0.18f;
+            }
+
+            int vertOrder[6]={0,1,2,0,2,3};
             for(int vi=0;vi<6;vi++){
+                int aoIdx=vertOrder[vi];
                 float vx=faceVerts[f][vi][0]+b->position.x;
                 float vy=faceVerts[f][vi][1]+b->position.y;
                 float vz=faceVerts[f][vi][2]+b->position.z;
                 float nx=faceNormals[f][0],ny=faceNormals[f][1],nz=faceNormals[f][2];
-                float ao=1.0f;
-                int nxp=x+(dx>0?1:dx<0?-1:0);
-                int nyp=y+(dy>0?1:dy<0?-1:0);
-                int nzp=z+(dz>0?1:dz<0?-1:0);
-                if(nxp>=0&&nxp<size&&nyp>=0&&nyp<size&&nzp>=0&&nzp<size){
-                    Block* nb=c->blocks[nxp][nyp][nzp];
-                    if(nb&&nb->active) ao=0.7f;
-                }
+
                 data[count++]=vx;data[count++]=vy;data[count++]=vz;
                 data[count++]=nx;data[count++]=ny;data[count++]=nz;
-                data[count++]=b->color.x*ao;
-                data[count++]=b->color.y*ao;
-                data[count++]=b->color.z*ao;
+                data[count++]=b->color.x;
+                data[count++]=b->color.y;
+                data[count++]=b->color.z;
+                data[count++]=ao[aoIdx];
             }
         }
     }
@@ -267,14 +278,16 @@ void BuildChunkMesh(Chunk* c,int size,float voxelSize) {
     glBindVertexArray(c->meshVAO);
     glBindBuffer(GL_ARRAY_BUFFER,c->meshVBO);
     glBufferData(GL_ARRAY_BUFFER,count*sizeof(float),data,GL_STATIC_DRAW);
-    glVertexAttribPointer(0,3,GL_FLOAT,GL_FALSE,9*sizeof(float),(void*)0);
+    glVertexAttribPointer(0,3,GL_FLOAT,GL_FALSE,10*sizeof(float),(void*)0);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1,3,GL_FLOAT,GL_FALSE,9*sizeof(float),(void*)(3*sizeof(float)));
+    glVertexAttribPointer(1,3,GL_FLOAT,GL_FALSE,10*sizeof(float),(void*)(3*sizeof(float)));
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(2,3,GL_FLOAT,GL_FALSE,9*sizeof(float),(void*)(6*sizeof(float)));
+    glVertexAttribPointer(2,3,GL_FLOAT,GL_FALSE,10*sizeof(float),(void*)(6*sizeof(float)));
     glEnableVertexAttribArray(2);
+    glVertexAttribPointer(3,1,GL_FLOAT,GL_FALSE,10*sizeof(float),(void*)(9*sizeof(float)));
+    glEnableVertexAttribArray(3);
     glBindVertexArray(0);
-    c->meshVertexCount=count/9;
+    c->meshVertexCount=count/10;
     free(data);
 }
 

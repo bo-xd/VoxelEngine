@@ -1,6 +1,5 @@
 #ifndef LIGHTING_H
 #define LIGHTING_H
-
 #include "../utils/MathUtil.h"
 
 typedef struct {
@@ -12,5 +11,6 @@ typedef struct {
 } DirectionalLight;
 
 void SetDirectionalLightUniforms(const DirectionalLight* light, unsigned int shaderID, vec3 viewPos);
+float CalculateAO(int side1, int side2, int corner);
 
 #endif

@@ -1,18 +1,19 @@
 #include "Window.h"
+#include <GL/glew.h>
 #include "Camera.h"
-#include "Renderer.h"
+#include "Player/Player.h"
 #include "World/Block.h"
 #include "utils/MathUtil.h"
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_error.h>
 #include <SDL3_ttf/SDL_ttf.h>
-#include <GL/glew.h>
 #include <stdlib.h>
 #include "Shaderer.h"
 #include "utils/FreeUtil.h"
 #include "World/Lighting.h"
 #include "ui/text.h"
 #include <stdio.h>
+#include "Renderer.h"
 
 #define CHUNK_SIZE 32
 #define VIEW_DISTANCE 32.0f
@@ -32,6 +33,9 @@ int CreateWindow(const char *title, int WIDTH, int HEIGHT) {
         SDL_Quit();
         return 1;
     }
+
+    SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
+    SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 4);
 
     Window.window = SDL_CreateWindow(title, WIDTH, HEIGHT, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
     if (!Window.window) {
@@ -62,20 +66,19 @@ int CreateWindow(const char *title, int WIDTH, int HEIGHT) {
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_DEPTH_TEST);
-    SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
-    SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 4);
+    glEnable(GL_MULTISAMPLE);
 
     SDL_SetWindowRelativeMouseMode(Window.window, true);
 
-    camera cam;
-    InitCamera(&cam, (vec3){0.0f, 2.0f, 0.0f});
+    Player player;
+    InitPlayer(&player, (vec3){0.0f, 5.0f, 0.0f});
 
     DirectionalLight sunlight = {
-        .direction = { -0.3f, -1.0f, -0.3f },
-        .color = { 1.0f, 1.0f, 1.0f },
-        .ambient = 0.2f,
-        .diffuse = 0.7f,
-        .specular = 0.5f
+        .direction = { -0.2f, -1.0f, -0.4f },
+        .color = { 1.0f, 0.98f, 0.95f },
+        .ambient = 0.4f,
+        .diffuse = 0.6f,
+        .specular = 0.2f
     };
 
     VoxelMesh cubeMesh = CreateVoxelMesh(0.2f);
@@ -86,7 +89,7 @@ int CreateWindow(const char *title, int WIDTH, int HEIGHT) {
     BuildChunkMesh(chunks[0], CHUNK_SIZE, 0.2f);
 
     shader skyShader = Shader_Load("Shaders/skybox/sky.vert", "Shaders/skybox/sky.frag");
-    SkyDome skyDome = CreateSkyDome(64, 32, (vec3){0.53f, 0.81f, 0.98f}, (vec3){1.0f, 1.0f, 1.0f});
+    SkyDome skyDome = CreateSkyDome(64, 32, (vec3){0.5f, 0.7f, 0.95f}, (vec3){0.9f, 0.95f, 1.0f});
 
     shader fontShader = Shader_Load("Shaders/Text/text.vert", "Shaders/Text/text.frag");
     TTF_Font* font = TTF_OpenFont("textures/fonts/VCR.ttf", 24);
@@ -112,7 +115,7 @@ int CreateWindow(const char *title, int WIDTH, int HEIGHT) {
             if (event.type == SDL_EVENT_QUIT)
                 Window.Running = false;
             if (event.type == SDL_EVENT_MOUSE_MOTION)
-                ProcessMouseMovement(&cam, event.motion.xrel, event.motion.yrel);
+                ProcessPlayerMouseMovement(&player, event.motion.xrel, event.motion.yrel);
             if (event.type == SDL_EVENT_WINDOW_RESIZED) {
                 WIDTH = event.window.data1;
                 HEIGHT = event.window.data2;
@@ -124,7 +127,8 @@ int CreateWindow(const char *title, int WIDTH, int HEIGHT) {
         float deltaTime = (nowTicks - lastTicks) / 1000.0f;
         lastTicks = nowTicks;
 
-        ProcessInput(&cam, deltaTime);
+        ProcessPlayerInput(&player, deltaTime);
+        UpdatePlayer(&player, deltaTime, chunks, 1, CHUNK_SIZE, 0.2f);
 
         frames++;
         fpsTimer += deltaTime;
@@ -142,10 +146,10 @@ int CreateWindow(const char *title, int WIDTH, int HEIGHT) {
 
         float aspect = (float)WIDTH / HEIGHT;
         mat4 projection = Perspective(60.0f, aspect, 0.1f, 100.0f);
-        vec3 front = CameraFront(&cam);
-        vec3 target = Vec3Add(cam.pos, front);
+        vec3 front = CameraFront(&player.cam);
+        vec3 target = Vec3Add(player.cam.pos, front);
         vec3 up = {0.0f, 1.0f, 0.0f};
-        mat4 view = LookAt(cam.pos, target, up);
+        mat4 view = LookAt(player.cam.pos, target, up);
 
         Shader_Use(&skyShader);
         glUniform3f(glGetUniformLocation(skyShader.id, "topColor"), 0.53f, 0.81f, 0.98f);
@@ -153,9 +157,9 @@ int CreateWindow(const char *title, int WIDTH, int HEIGHT) {
         DrawSkyDome(&skyDome, &skyShader, view, projection);
 
         Shader_Use(&cubeShader);
-        SetDirectionalLightUniforms(&sunlight, cubeShader.id, cam.pos);
+        SetDirectionalLightUniforms(&sunlight, cubeShader.id, player.cam.pos);
         for (int i = 0; i < 1; i++)
-            DrawChunk(chunks[i], &cubeMesh, &cubeShader, view, projection, CHUNK_SIZE, cam.pos, VIEW_DISTANCE);
+            DrawChunk(chunks[i], &cubeMesh, &cubeShader, view, projection, CHUNK_SIZE, player.cam.pos, VIEW_DISTANCE);
 
         glDisable(GL_DEPTH_TEST);
         if (fpsTex.texture != 0) {

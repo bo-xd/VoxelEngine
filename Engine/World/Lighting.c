@@ -3,22 +3,19 @@
 #include <stdio.h>
 
 void SetDirectionalLightUniforms(const DirectionalLight* light, unsigned int shaderID, vec3 viewPos) {
-    char name[64];
-
-    snprintf(name, sizeof(name), "dirLight.direction");
-    glUniform3f(glGetUniformLocation(shaderID, name), light->direction.x, light->direction.y, light->direction.z);
-
-    snprintf(name, sizeof(name), "dirLight.color");
-    glUniform3f(glGetUniformLocation(shaderID, name), light->color.x, light->color.y, light->color.z);
-
-    snprintf(name, sizeof(name), "dirLight.ambient");
-    glUniform1f(glGetUniformLocation(shaderID, name), light->ambient);
-
-    snprintf(name, sizeof(name), "dirLight.diffuse");
-    glUniform1f(glGetUniformLocation(shaderID, name), light->diffuse);
-
-    snprintf(name, sizeof(name), "dirLight.specular");
-    glUniform1f(glGetUniformLocation(shaderID, name), light->specular);
-
+    glUniform3f(glGetUniformLocation(shaderID, "dirLight.direction"),
+                light->direction.x, light->direction.y, light->direction.z);
+    glUniform3f(glGetUniformLocation(shaderID, "dirLight.color"),
+                light->color.x, light->color.y, light->color.z);
+    glUniform1f(glGetUniformLocation(shaderID, "dirLight.ambient"), light->ambient);
+    glUniform1f(glGetUniformLocation(shaderID, "dirLight.diffuse"), light->diffuse);
+    glUniform1f(glGetUniformLocation(shaderID, "dirLight.specular"), light->specular);
     glUniform3f(glGetUniformLocation(shaderID, "viewPos"), viewPos.x, viewPos.y, viewPos.z);
+}
+
+float CalculateAO(int side1, int side2, int corner) {
+    if (side1 && side2) {
+        return 0.0f;
+    }
+    return 1.0f - (side1 + side2 + corner) * 0.25f;
 }

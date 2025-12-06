@@ -66,7 +66,6 @@ TextTexture CreateTextTexture(TTF_Font* font, const char* text, SDL_Color color)
     return tex;
 }
 
-
 void RenderTextTexture(shader* s, TextTexture* tex, float x, float y, int screenWidth, int screenHeight) {
     Shader_Use(s);
 

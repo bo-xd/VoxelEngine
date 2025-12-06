@@ -1,6 +1,5 @@
 #ifndef RENDERER_H
 #define RENDERER_H
-
 #include <GL/glew.h>
 #include "Shaderer.h"
 #include "utils/MathUtil.h"
@@ -27,7 +26,6 @@ void DrawChunk(const Chunk* c, const VoxelMesh* voxel, shader* s, mat4 view, mat
 void BuildChunkMesh(Chunk* c, int size, float voxelSize);
 void FreeChunkMesh(Chunk* c);
 
-//Skybox
 SkyDome CreateSkyDome(int slices, int stacks, vec3 topColor, vec3 bottomColor);
 void DrawSkyDome(SkyDome* dome, shader* s, mat4 view, mat4 projection);
 void FreeSkyDome(SkyDome* dome);
