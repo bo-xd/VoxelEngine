@@ -90,4 +90,37 @@ static mat4 Mat4Multiply(mat4 a, mat4 b) {
     return r;
 }
 
+static mat4 Mat4Scale(mat4 m, vec3 v) {
+    mat4 r = m;
+    r.m[0] *= v.x;
+    r.m[1] *= v.x;
+    r.m[2] *= v.x;
+    r.m[3] *= v.x;
+
+    r.m[4] *= v.y;
+    r.m[5] *= v.y;
+    r.m[6] *= v.y;
+    r.m[7] *= v.y;
+
+    r.m[8] *= v.z;
+    r.m[9] *= v.z;
+    r.m[10] *= v.z;
+    r.m[11] *= v.z;
+
+    return r;
+}
+
+static mat4 Ortho(float left, float right, float bottom, float top, float near, float far) {
+    float rl = right - left;
+    float tb = top - bottom;
+    float fn = far - near;
+
+    return (mat4){{
+        2.0f/rl, 0, 0, 0,
+        0, 2.0f/tb, 0, 0,
+        0, 0, -2.0f/fn, 0,
+        -(right+left)/rl, -(top+bottom)/tb, -(far+near)/fn, 1.0f
+    }};
+}
+
 #endif

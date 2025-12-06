@@ -8,6 +8,7 @@
 #include "Engine/Shaderer.c"
 #include "Engine/World/Block.c"
 #include "Engine/World/Lighting.c"
+#include "Engine/ui/text.c"
 
 int main(int argc, char *argv[]) {
     CreateWindow("Engine", 1920, 1920);

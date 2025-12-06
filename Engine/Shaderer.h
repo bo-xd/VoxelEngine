@@ -3,6 +3,7 @@
 #include <GL/gl.h>
 #include <GL/glu.h>
 #include <SDL3/SDL_surface.h>
+#include "utils/MathUtil.h"
 
 typedef struct shader {
     GLuint id;
@@ -13,6 +14,6 @@ void Shader_Destroy(shader* s);
 void Shader_Use(shader* s);
 void Shader_SetInt(shader* s, const char* name, int value);
 void Shader_SetFloat(shader* s, const char* name, float value);
+void Shader_SetMat4(shader* s, const char* name, const mat4* mat);
 
-unsigned char* ExtractFace(SDL_Surface* src, int x, int y, int size);
-GLuint LoadCubemapAtlas(const char* filename);
+GLuint LoadTexture(const char* filename);

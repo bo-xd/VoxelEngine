@@ -64,10 +64,6 @@ VoxelMesh CreateVoxelMesh(float size) {
     return mesh;
 }
 
-void Shader_SetMat4(shader* s, const char* name, const mat4* mat) {
-    GLint loc = glGetUniformLocation(s->id, name);
-    glUniformMatrix4fv(loc, 1, GL_FALSE, mat->m);
-}
 
 void DrawVoxel(const VoxelMesh* voxel, shader* s, vec3 pos, mat4 view, mat4 projection, vec3 color) {
     Shader_Use(s);
@@ -128,7 +124,6 @@ SkyDome CreateSkyDome(int slices, int stacks, vec3 topColor, vec3 bottomColor) {
             float x10 = r1*cosf(theta0), z10 = r1*sinf(theta0);
             float x11 = r1*cosf(theta1), z11 = r1*sinf(theta1);
 
-            // Compute color based on vertical position (y)
             float t0 = (y0 + 1.0f) * 0.5f; // map y [-1,1] -> [0,1]
             float t1 = (y1 + 1.0f) * 0.5f;
 
