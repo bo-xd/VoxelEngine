@@ -28,7 +28,6 @@ vec3 Vec3Lerp(vec3 a, vec3 b, float t) {
     };
 }
 
-
 static mat4 Mat4Identity() {
     return (mat4){{
         1,0,0,0,

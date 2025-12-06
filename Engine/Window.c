@@ -16,7 +16,9 @@
 #include "Renderer.h"
 
 #define CHUNK_SIZE 32
-#define VIEW_DISTANCE 32.0f
+#define VIEW_DISTANCE 100.0f
+#define RENDER_DISTANCE 5
+#define MAX_CHUNKS 64
 
 int CreateWindow(const char *title, int WIDTH, int HEIGHT) {
     window_t Window = {0};
@@ -70,8 +72,10 @@ int CreateWindow(const char *title, int WIDTH, int HEIGHT) {
 
     SDL_SetWindowRelativeMouseMode(Window.window, true);
 
+    InitWorldSeed(12345);
+
     Player player;
-    InitPlayer(&player, (vec3){0.0f, 5.0f, 0.0f});
+    InitPlayer(&player, (vec3){CHUNK_SIZE * 0.2f * 0.5f, 25.0f, CHUNK_SIZE * 0.2f * 0.5f});
 
     DirectionalLight sunlight = {
         .direction = { -0.2f, -1.0f, -0.4f },
@@ -84,9 +88,10 @@ int CreateWindow(const char *title, int WIDTH, int HEIGHT) {
     VoxelMesh cubeMesh = CreateVoxelMesh(0.2f);
     shader cubeShader = Shader_Load("Shaders/voxel/cube.vert", "Shaders/voxel/cube.frag");
 
-    Chunk* chunks[1];
-    chunks[0] = CreateChunk((vec3){0,0,0}, CHUNK_SIZE, 0.2f);
-    BuildChunkMesh(chunks[0], CHUNK_SIZE, 0.2f);
+    ChunkSlot* chunkSlots = (ChunkSlot*)calloc(MAX_CHUNKS, sizeof(ChunkSlot));
+    Chunk** chunkPointers = (Chunk**)malloc(MAX_CHUNKS * sizeof(Chunk*));
+
+    UpdateChunkLoading(chunkSlots, MAX_CHUNKS, player.position, 0.2f, CHUNK_SIZE, RENDER_DISTANCE);
 
     shader skyShader = Shader_Load("Shaders/skybox/sky.vert", "Shaders/skybox/sky.frag");
     SkyDome skyDome = CreateSkyDome(64, 32, (vec3){0.5f, 0.7f, 0.95f}, (vec3){0.9f, 0.95f, 1.0f});
@@ -98,13 +103,19 @@ int CreateWindow(const char *title, int WIDTH, int HEIGHT) {
     }
     SDL_Color yellow = {255, 255, 0, 255};
     TextTexture fpsTex = {0};
+    TextTexture posTex = {0};
 
     char fpsText[32];
+    char posText[64];
     int frames = 0;
     float fpsTimer = 0.0f;
+    float chunkUpdateTimer = 0.0f;
 
     snprintf(fpsText, sizeof(fpsText), "FPS: 0");
     fpsTex = CreateTextTexture(font, fpsText, yellow);
+
+    snprintf(posText, sizeof(posText), "Pos: (0.0, 0.0, 0.0)");
+    posTex = CreateTextTexture(font, posText, yellow);
 
     Window.Running = true;
     int lastTicks = SDL_GetTicks();
@@ -128,24 +139,43 @@ int CreateWindow(const char *title, int WIDTH, int HEIGHT) {
         lastTicks = nowTicks;
 
         ProcessPlayerInput(&player, deltaTime);
-        UpdatePlayer(&player, deltaTime, chunks, 1, CHUNK_SIZE, 0.2f);
+
+        int activeChunks = 0;
+        for (int i = 0; i < MAX_CHUNKS; i++) {
+            if (chunkSlots[i].loaded) {
+                chunkPointers[activeChunks++] = chunkSlots[i].chunk;
+            }
+        }
+
+        UpdatePlayer(&player, deltaTime, chunkPointers, activeChunks, CHUNK_SIZE, 0.2f);
+
+        chunkUpdateTimer += deltaTime;
+        if (chunkUpdateTimer >= 0.5f) {
+            UpdateChunkLoading(chunkSlots, MAX_CHUNKS, player.position, 0.2f, CHUNK_SIZE, RENDER_DISTANCE);
+            chunkUpdateTimer = 0.0f;
+        }
 
         frames++;
         fpsTimer += deltaTime;
-        if (fpsTimer >= 1.0f) {
-            snprintf(fpsText, sizeof(fpsText), "FPS: %d", frames);
+        if (fpsTimer >= 0.5f) {
+            snprintf(fpsText, sizeof(fpsText), "FPS: %d", (int)(frames / fpsTimer));
             frames = 0;
             fpsTimer = 0.0f;
 
             FreeTextTexture(&fpsTex);
             fpsTex = CreateTextTexture(font, fpsText, yellow);
+
+            snprintf(posText, sizeof(posText), "Pos: (%.1f, %.1f, %.1f)",
+                     player.position.x, player.position.y, player.position.z);
+            FreeTextTexture(&posTex);
+            posTex = CreateTextTexture(font, posText, yellow);
         }
 
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         float aspect = (float)WIDTH / HEIGHT;
-        mat4 projection = Perspective(60.0f, aspect, 0.1f, 100.0f);
+        mat4 projection = Perspective(60.0f, aspect, 0.1f, 200.0f);
         vec3 front = CameraFront(&player.cam);
         vec3 target = Vec3Add(player.cam.pos, front);
         vec3 up = {0.0f, 1.0f, 0.0f};
@@ -158,12 +188,20 @@ int CreateWindow(const char *title, int WIDTH, int HEIGHT) {
 
         Shader_Use(&cubeShader);
         SetDirectionalLightUniforms(&sunlight, cubeShader.id, player.cam.pos);
-        for (int i = 0; i < 1; i++)
-            DrawChunk(chunks[i], &cubeMesh, &cubeShader, view, projection, CHUNK_SIZE, player.cam.pos, VIEW_DISTANCE);
+
+        for (int i = 0; i < MAX_CHUNKS; i++) {
+            if (chunkSlots[i].loaded && chunkSlots[i].chunk) {
+                DrawChunk(chunkSlots[i].chunk, &cubeMesh, &cubeShader, view, projection,
+                         CHUNK_SIZE, player.cam.pos, VIEW_DISTANCE);
+            }
+        }
 
         glDisable(GL_DEPTH_TEST);
         if (fpsTex.texture != 0) {
             RenderTextTexture(&fontShader, &fpsTex, 10.0f, 10.0f, WIDTH, HEIGHT);
+        }
+        if (posTex.texture != 0) {
+            RenderTextTexture(&fontShader, &posTex, 10.0f, 40.0f, WIDTH, HEIGHT);
         }
         glEnable(GL_DEPTH_TEST);
 
@@ -173,19 +211,13 @@ int CreateWindow(const char *title, int WIDTH, int HEIGHT) {
     FreeShader(1, &cubeMesh.VBO, &cubeShader);
     FreeSkyDome(&skyDome);
     FreeTextTexture(&fpsTex);
+    FreeTextTexture(&posTex);
     if (font) TTF_CloseFont(font);
     TTF_Quit();
 
-    for (int i = 0; i < 1; i++) {
-        FreeChunkMesh(chunks[i]);
-        for (int x=0;x<CHUNK_SIZE;x++)
-            for (int y=0;y<CHUNK_SIZE;y++)
-                for (int z=0;z<CHUNK_SIZE;z++)
-                    if (chunks[i]->blocks[x][y][z]) free(chunks[i]->blocks[x][y][z]);
-        free(chunks[i]);
-    }
-
-    glDeleteTextures(1, &fpsTex.texture);
+    FreeAllChunks(chunkSlots, MAX_CHUNKS, CHUNK_SIZE);
+    free(chunkSlots);
+    free(chunkPointers);
 
     SDL_GL_DestroyContext(Window.context);
     SDL_DestroyWindow(Window.window);

@@ -123,17 +123,54 @@ void UpdatePlayer(Player* player, float deltaTime, Chunk** chunks, int chunkCoun
     player->velocity.y += GRAVITY * deltaTime;
 
     vec3 newPos = player->position;
+    float maxStepHeight = 0.6f;
 
     newPos.x += player->velocity.x * deltaTime;
     if (CheckCollision(newPos, player->width, player->height, chunks, chunkCount, chunkSize, voxelSize)) {
-        newPos.x = player->position.x;
-        player->velocity.x = 0.0f;
+        bool stepped = false;
+        if (player->onGround && (player->velocity.x != 0.0f || player->velocity.z != 0.0f)) {
+            for (float stepHeight = 0.2f; stepHeight <= maxStepHeight; stepHeight += 0.2f) {
+                vec3 stepPos = newPos;
+                stepPos.y = player->position.y + stepHeight;
+                if (!CheckCollision(stepPos, player->width, player->height, chunks, chunkCount, chunkSize, voxelSize)) {
+                    vec3 groundCheck = stepPos;
+                    groundCheck.y -= 0.1f;
+                    if (IsBlockSolid(chunks, chunkCount, groundCheck, chunkSize, voxelSize)) {
+                        newPos.y = stepPos.y;
+                        stepped = true;
+                        break;
+                    }
+                }
+            }
+        }
+        if (!stepped) {
+            newPos.x = player->position.x;
+            player->velocity.x = 0.0f;
+        }
     }
 
     newPos.z += player->velocity.z * deltaTime;
     if (CheckCollision(newPos, player->width, player->height, chunks, chunkCount, chunkSize, voxelSize)) {
-        newPos.z = player->position.z;
-        player->velocity.z = 0.0f;
+        bool stepped = false;
+        if (player->onGround && (player->velocity.x != 0.0f || player->velocity.z != 0.0f)) {
+            for (float stepHeight = 0.2f; stepHeight <= maxStepHeight; stepHeight += 0.2f) {
+                vec3 stepPos = newPos;
+                stepPos.y = player->position.y + stepHeight;
+                if (!CheckCollision(stepPos, player->width, player->height, chunks, chunkCount, chunkSize, voxelSize)) {
+                    vec3 groundCheck = stepPos;
+                    groundCheck.y -= 0.1f;
+                    if (IsBlockSolid(chunks, chunkCount, groundCheck, chunkSize, voxelSize)) {
+                        newPos.y = stepPos.y;
+                        stepped = true;
+                        break;
+                    }
+                }
+            }
+        }
+        if (!stepped) {
+            newPos.z = player->position.z;
+            player->velocity.z = 0.0f;
+        }
     }
 
     newPos.y += player->velocity.y * deltaTime;
