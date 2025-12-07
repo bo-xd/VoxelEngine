@@ -36,7 +36,10 @@ bool IsBlockSolid(Chunk** chunks, int chunkCount, vec3 worldPos, int chunkSize, 
         int by = (int)(relY / voxelSize);
         int bz = (int)(relZ / voxelSize);
 
-        if (bx >= 0 && bx < chunkSize && by >= 0 && by < chunkSize && bz >= 0 && bz < chunkSize) {
+        if (bx >= 0 && bx < chunkSize &&
+            by >= 0 && by < chunkSize &&
+            bz >= 0 && bz < chunkSize) {
+
             Block* b = c->blocks[bx][by][bz];
             if (b && b->active) return true;
         }
@@ -44,7 +47,10 @@ bool IsBlockSolid(Chunk** chunks, int chunkCount, vec3 worldPos, int chunkSize, 
     return false;
 }
 
-bool CheckCollision(vec3 pos, float width, float height, Chunk** chunks, int chunkCount, int chunkSize, float voxelSize) {
+bool CheckCollision(vec3 pos, float width, float height,
+                    Chunk** chunks, int chunkCount,
+                    int chunkSize, float voxelSize)
+{
     float halfWidth = width * 0.5f;
 
     vec3 checkPoints[8] = {
@@ -59,44 +65,33 @@ bool CheckCollision(vec3 pos, float width, float height, Chunk** chunks, int chu
     };
 
     for (int i = 0; i < 8; i++) {
-        if (IsBlockSolid(chunks, chunkCount, checkPoints[i], chunkSize, voxelSize)) {
+        if (IsBlockSolid(chunks, chunkCount, checkPoints[i], chunkSize, voxelSize))
             return true;
-        }
     }
     return false;
 }
 
 void ProcessPlayerInput(Player* player, float deltaTime) {
     const bool* state = SDL_GetKeyboardState(NULL);
+
     vec3 front = CameraFront(&player->cam);
     vec3 right = CameraRight(&player->cam);
 
-    front.y = 0.0f;
+    front.y = 0;
+    right.y = 0;
+
     front = Vec3Normalize(front);
-    right.y = 0.0f;
     right = Vec3Normalize(right);
 
-    vec3 moveDir = {0.0f, 0.0f, 0.0f};
+    vec3 moveDir = {0,0,0};
 
-    if (state[SDL_SCANCODE_W]) {
-        moveDir.x += front.x;
-        moveDir.z += front.z;
-    }
-    if (state[SDL_SCANCODE_S]) {
-        moveDir.x -= front.x;
-        moveDir.z -= front.z;
-    }
-    if (state[SDL_SCANCODE_A]) {
-        moveDir.x -= right.x;
-        moveDir.z -= right.z;
-    }
-    if (state[SDL_SCANCODE_D]) {
-        moveDir.x += right.x;
-        moveDir.z += right.z;
-    }
+    if (state[SDL_SCANCODE_W]) { moveDir.x += front.x; moveDir.z += front.z; }
+    if (state[SDL_SCANCODE_S]) { moveDir.x -= front.x; moveDir.z -= front.z; }
+    if (state[SDL_SCANCODE_A]) { moveDir.x -= right.x; moveDir.z -= right.z; }
+    if (state[SDL_SCANCODE_D]) { moveDir.x += right.x; moveDir.z += right.z; }
 
-    float len = sqrtf(moveDir.x * moveDir.x + moveDir.z * moveDir.z);
-    if (len > 0.0f) {
+    float len = sqrtf(moveDir.x*moveDir.x + moveDir.z*moveDir.z);
+    if (len > 0) {
         moveDir.x /= len;
         moveDir.z /= len;
     }
@@ -110,84 +105,57 @@ void ProcessPlayerInput(Player* player, float deltaTime) {
         player->onGround = false;
     }
 
-    if (!state[SDL_SCANCODE_SPACE]) {
+    if (!state[SDL_SCANCODE_SPACE])
         player->jumping = false;
-    }
 }
 
 void ProcessPlayerMouseMovement(Player* player, float xrel, float yrel) {
     ProcessMouseMovement(&player->cam, xrel, yrel);
 }
 
-void UpdatePlayer(Player* player, float deltaTime, Chunk** chunks, int chunkCount, int chunkSize, float voxelSize) {
+void UpdatePlayer(Player* player, float deltaTime,
+                  Chunk** chunks, int chunkCount,
+                  int chunkSize, float voxelSize)
+{
     player->velocity.y += GRAVITY * deltaTime;
 
     vec3 newPos = player->position;
-    float maxStepHeight = 0.6f;
 
     newPos.x += player->velocity.x * deltaTime;
-    if (CheckCollision(newPos, player->width, player->height, chunks, chunkCount, chunkSize, voxelSize)) {
-        bool stepped = false;
-        if (player->onGround && (player->velocity.x != 0.0f || player->velocity.z != 0.0f)) {
-            for (float stepHeight = 0.2f; stepHeight <= maxStepHeight; stepHeight += 0.2f) {
-                vec3 stepPos = newPos;
-                stepPos.y = player->position.y + stepHeight;
-                if (!CheckCollision(stepPos, player->width, player->height, chunks, chunkCount, chunkSize, voxelSize)) {
-                    vec3 groundCheck = stepPos;
-                    groundCheck.y -= 0.1f;
-                    if (IsBlockSolid(chunks, chunkCount, groundCheck, chunkSize, voxelSize)) {
-                        newPos.y = stepPos.y;
-                        stepped = true;
-                        break;
-                    }
-                }
-            }
-        }
-        if (!stepped) {
-            newPos.x = player->position.x;
-            player->velocity.x = 0.0f;
-        }
+    if (CheckCollision(newPos, player->width, player->height,
+                       chunks, chunkCount, chunkSize, voxelSize))
+    {
+        newPos.x = player->position.x;
+        player->velocity.x = 0;
     }
 
     newPos.z += player->velocity.z * deltaTime;
-    if (CheckCollision(newPos, player->width, player->height, chunks, chunkCount, chunkSize, voxelSize)) {
-        bool stepped = false;
-        if (player->onGround && (player->velocity.x != 0.0f || player->velocity.z != 0.0f)) {
-            for (float stepHeight = 0.2f; stepHeight <= maxStepHeight; stepHeight += 0.2f) {
-                vec3 stepPos = newPos;
-                stepPos.y = player->position.y + stepHeight;
-                if (!CheckCollision(stepPos, player->width, player->height, chunks, chunkCount, chunkSize, voxelSize)) {
-                    vec3 groundCheck = stepPos;
-                    groundCheck.y -= 0.1f;
-                    if (IsBlockSolid(chunks, chunkCount, groundCheck, chunkSize, voxelSize)) {
-                        newPos.y = stepPos.y;
-                        stepped = true;
-                        break;
-                    }
-                }
-            }
-        }
-        if (!stepped) {
-            newPos.z = player->position.z;
-            player->velocity.z = 0.0f;
-        }
+    if (CheckCollision(newPos, player->width, player->height,
+                       chunks, chunkCount, chunkSize, voxelSize))
+    {
+        newPos.z = player->position.z;
+        player->velocity.z = 0;
     }
 
     newPos.y += player->velocity.y * deltaTime;
-    if (CheckCollision(newPos, player->width, player->height, chunks, chunkCount, chunkSize, voxelSize)) {
-        if (player->velocity.y < 0.0f) {
+    if (CheckCollision(newPos, player->width, player->height,
+                       chunks, chunkCount, chunkSize, voxelSize))
+    {
+        if (player->velocity.y < 0)
             player->onGround = true;
-        }
+
         newPos.y = player->position.y;
-        player->velocity.y = 0.0f;
-    } else {
+        player->velocity.y = 0;
+    }
+    else {
         player->onGround = false;
     }
 
     player->position = newPos;
-    player->cam.pos.x = player->position.x;
-    player->cam.pos.y = player->position.y + player->eyeHeight;
-    player->cam.pos.z = player->position.z;
+
+    player->cam.pos.x = newPos.x;
+    player->cam.pos.y = newPos.y + player->eyeHeight;
+    player->cam.pos.z = newPos.z;
 }
 
 vec3 GetPlayerCameraPosition(Player* player) {
