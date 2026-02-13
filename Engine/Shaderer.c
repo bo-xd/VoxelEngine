@@ -1,4 +1,5 @@
 #include "Shaderer.h"
+#include <GL/glew.h>
 #include <GL/gl.h>
 #include <SDL3/SDL_error.h>
 #include <SDL3/SDL_pixels.h>
@@ -6,7 +7,6 @@
 #include <SDL3/SDL.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <GL/glew.h>
 #include <SDL3_image/SDL_image.h>
 #include <GL/glu.h>
 
